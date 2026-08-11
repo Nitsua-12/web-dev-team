@@ -97,51 +97,70 @@ class FetchHomepageHtmlTests(unittest.TestCase):
         def handler(request):
             return httpx.Response(200, text="<html>hi</html>")
         client = httpx.Client(transport=httpx.MockTransport(handler))
-        html, error = site_audit.fetch_homepage_html("https://example.com", client=client)
+        html, error, final_url = site_audit.fetch_homepage_html("https://example.com", client=client)
         self.assertEqual(html, "<html>hi</html>")
         self.assertIsNone(error)
+        self.assertEqual(final_url, "https://example.com")
+
+    @patch("site_audit.site_check.robots_allow_fetch", return_value=True)
+    def test_returns_final_url_after_redirect(self, _mock):
+        def handler(request):
+            if request.url.host == "example.com":
+                return httpx.Response(
+                    301, headers={"Location": "https://www.example.com/"},
+                )
+            return httpx.Response(200, text='<link rel="canonical" href="https://www.example.com/">')
+        client = httpx.Client(transport=httpx.MockTransport(handler), follow_redirects=True)
+        html, error, final_url = site_audit.fetch_homepage_html("http://example.com", client=client)
+        self.assertIsNone(error)
+        self.assertEqual(final_url, "https://www.example.com/")
 
     @patch("site_audit.site_check.robots_allow_fetch", return_value=True)
     def test_returns_error_on_http_failure(self, _mock):
         def handler(request):
             raise httpx.ConnectTimeout("timed out", request=request)
         client = httpx.Client(transport=httpx.MockTransport(handler))
-        html, error = site_audit.fetch_homepage_html("https://example.com", client=client)
+        html, error, final_url = site_audit.fetch_homepage_html("https://example.com", client=client)
         self.assertIsNone(html)
         self.assertIsNotNone(error)
+        self.assertIsNone(final_url)
 
     @patch("site_audit.site_check.robots_allow_fetch", return_value=False)
     def test_respects_robots_disallow(self, _mock):
-        html, error = site_audit.fetch_homepage_html("https://example.com")
+        html, error, final_url = site_audit.fetch_homepage_html("https://example.com")
         self.assertIsNone(html)
         self.assertEqual(error, "robots_disallowed")
+        self.assertIsNone(final_url)
 
     @patch("site_audit.site_check.robots_allow_fetch", return_value=True)
     def test_returns_error_on_403_bot_block(self, _mock):
         def handler(request):
             return httpx.Response(403, text="<html>bot challenge</html>")
         client = httpx.Client(transport=httpx.MockTransport(handler))
-        html, error = site_audit.fetch_homepage_html("https://example.com", client=client)
+        html, error, final_url = site_audit.fetch_homepage_html("https://example.com", client=client)
         self.assertIsNone(html)
         self.assertEqual(error, "http_403")
+        self.assertIsNone(final_url)
 
     @patch("site_audit.site_check.robots_allow_fetch", return_value=True)
     def test_returns_error_on_404(self, _mock):
         def handler(request):
             return httpx.Response(404, text="<html>not found</html>")
         client = httpx.Client(transport=httpx.MockTransport(handler))
-        html, error = site_audit.fetch_homepage_html("https://example.com", client=client)
+        html, error, final_url = site_audit.fetch_homepage_html("https://example.com", client=client)
         self.assertIsNone(html)
         self.assertEqual(error, "http_404")
+        self.assertIsNone(final_url)
 
     @patch("site_audit.site_check.robots_allow_fetch", return_value=True)
     def test_returns_error_on_500(self, _mock):
         def handler(request):
             return httpx.Response(500, text="<html>server error</html>")
         client = httpx.Client(transport=httpx.MockTransport(handler))
-        html, error = site_audit.fetch_homepage_html("https://example.com", client=client)
+        html, error, final_url = site_audit.fetch_homepage_html("https://example.com", client=client)
         self.assertIsNone(html)
         self.assertEqual(error, "http_500")
+        self.assertIsNone(final_url)
 
 
 class CheckUrlExistsTests(unittest.TestCase):
@@ -170,7 +189,7 @@ class AuditSiteTests(unittest.TestCase):
         self.assertEqual(result["status"], "skipped")
         self.assertIsNone(result["score"])
 
-    @patch("site_audit.fetch_homepage_html", return_value=(None, "robots_disallowed"))
+    @patch("site_audit.fetch_homepage_html", return_value=(None, "robots_disallowed", None))
     def test_skipped_when_fetch_fails(self, _mock):
         result = site_audit.audit_site("https://example.com", "fake-key")
         self.assertEqual(result["status"], "skipped")
@@ -178,7 +197,7 @@ class AuditSiteTests(unittest.TestCase):
 
     @patch("site_audit.psi_client.run_pagespeed", side_effect=psi_client.PsiApiError("boom"))
     @patch("site_audit.check_url_exists", return_value=True)
-    @patch("site_audit.fetch_homepage_html", return_value=("<html><title>Shop</title></html>", None))
+    @patch("site_audit.fetch_homepage_html", return_value=("<html><title>Shop</title></html>", None, "https://example.com"))
     def test_status_error_when_psi_fails_but_keeps_onpage_signals(self, _fetch, _url_exists, _psi):
         result = site_audit.audit_site("https://example.com", "fake-key")
         self.assertEqual(result["status"], "error")
@@ -196,7 +215,7 @@ class AuditSiteTests(unittest.TestCase):
         },
     )
     @patch("site_audit.check_url_exists", return_value=True)
-    @patch("site_audit.fetch_homepage_html", return_value=("<html><title>Shop</title></html>", None))
+    @patch("site_audit.fetch_homepage_html", return_value=("<html><title>Shop</title></html>", None, "https://example.com"))
     def test_status_ok_full_flow(self, _fetch, _url_exists, _psi):
         result = site_audit.audit_site("https://example.com", "fake-key")
         self.assertEqual(result["status"], "ok")

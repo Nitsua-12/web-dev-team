@@ -117,21 +117,26 @@ def has_cta(html: str) -> bool:
     return any(phrase in lower_html for phrase in CTA_PHRASES)
 
 
-def fetch_homepage_html(url: str, timeout: float = 10.0, client: "httpx.Client | None" = None) -> tuple[str | None, str | None]:
-    """Returns (html, error). html is None if robots.txt disallows the
-    fetch or the request fails; error explains why when html is None."""
+def fetch_homepage_html(url: str, timeout: float = 10.0, client: "httpx.Client | None" = None) -> tuple[str | None, str | None, str | None]:
+    """Returns (html, error, final_url). html is None if robots.txt
+    disallows the fetch or the request fails; error explains why when html
+    is None. final_url is the post-redirect URL on success (httpx follows
+    redirects here), and None on any failure path -- callers must evaluate
+    page content (e.g. canonical tags) and derive same-origin URLs against
+    final_url, not the original url, since redirects are common for old
+    small-business sites (http -> https, bare domain -> www)."""
     if not site_check.robots_allow_fetch(url):
-        return None, "robots_disallowed"
+        return None, "robots_disallowed", None
 
     owns_client = client is None
     client = client or httpx.Client(timeout=timeout, follow_redirects=True)
     try:
         response = client.get(url, headers={"User-Agent": USER_AGENT})
         if response.status_code >= 400:
-            return None, f"http_{response.status_code}"
-        return response.text, None
+            return None, f"http_{response.status_code}", None
+        return response.text, None, str(response.url)
     except httpx.HTTPError as exc:
-        return None, str(exc)
+        return None, str(exc), None
     finally:
         if owns_client:
             client.close()
@@ -156,7 +161,7 @@ def audit_site(url: str, psi_api_key: str) -> dict:
     if not url:
         return {"status": "skipped", "score": None, "signals": {}, "run_at": run_at}
 
-    html, fetch_error = fetch_homepage_html(url)
+    html, fetch_error, final_url = fetch_homepage_html(url)
     if html is None:
         return {"status": "skipped", "score": None, "signals": {"fetch_error": fetch_error}, "run_at": run_at}
 
@@ -165,7 +170,7 @@ def audit_site(url: str, psi_api_key: str) -> dict:
         "meta_description": extract_meta_description(html),
         "h1_count": count_h1(html),
         "heading_hierarchy_skip": has_heading_hierarchy_skip(html),
-        "self_referencing_canonical": has_self_referencing_canonical(html, url),
+        "self_referencing_canonical": has_self_referencing_canonical(html, final_url),
         "noindex": has_noindex_robots_meta(html),
         "json_ld_local_business": has_json_ld_local_business(html),
         "phone_number": extract_phone_number(html),
@@ -173,7 +178,7 @@ def audit_site(url: str, psi_api_key: str) -> dict:
         "cta_present": has_cta(html),
     }
 
-    parsed = urlparse(url)
+    parsed = urlparse(final_url)
     origin = f"{parsed.scheme}://{parsed.netloc}"
     signals["sitemap_exists"] = check_url_exists(urljoin(origin, "/sitemap.xml"))
     signals["robots_txt_exists"] = check_url_exists(urljoin(origin, "/robots.txt"))
