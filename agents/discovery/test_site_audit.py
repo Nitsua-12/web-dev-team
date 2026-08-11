@@ -116,6 +116,33 @@ class FetchHomepageHtmlTests(unittest.TestCase):
         self.assertIsNone(html)
         self.assertEqual(error, "robots_disallowed")
 
+    @patch("site_audit.site_check.robots_allow_fetch", return_value=True)
+    def test_returns_error_on_403_bot_block(self, _mock):
+        def handler(request):
+            return httpx.Response(403, text="<html>bot challenge</html>")
+        client = httpx.Client(transport=httpx.MockTransport(handler))
+        html, error = site_audit.fetch_homepage_html("https://example.com", client=client)
+        self.assertIsNone(html)
+        self.assertEqual(error, "http_403")
+
+    @patch("site_audit.site_check.robots_allow_fetch", return_value=True)
+    def test_returns_error_on_404(self, _mock):
+        def handler(request):
+            return httpx.Response(404, text="<html>not found</html>")
+        client = httpx.Client(transport=httpx.MockTransport(handler))
+        html, error = site_audit.fetch_homepage_html("https://example.com", client=client)
+        self.assertIsNone(html)
+        self.assertEqual(error, "http_404")
+
+    @patch("site_audit.site_check.robots_allow_fetch", return_value=True)
+    def test_returns_error_on_500(self, _mock):
+        def handler(request):
+            return httpx.Response(500, text="<html>server error</html>")
+        client = httpx.Client(transport=httpx.MockTransport(handler))
+        html, error = site_audit.fetch_homepage_html("https://example.com", client=client)
+        self.assertIsNone(html)
+        self.assertEqual(error, "http_500")
+
 
 class CheckUrlExistsTests(unittest.TestCase):
     def test_true_on_200(self):

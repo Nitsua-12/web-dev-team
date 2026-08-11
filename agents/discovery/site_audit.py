@@ -127,6 +127,8 @@ def fetch_homepage_html(url: str, timeout: float = 10.0, client: "httpx.Client |
     client = client or httpx.Client(timeout=timeout, follow_redirects=True)
     try:
         response = client.get(url, headers={"User-Agent": USER_AGENT})
+        if response.status_code >= 400:
+            return None, f"http_{response.status_code}"
         return response.text, None
     except httpx.HTTPError as exc:
         return None, str(exc)
