@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Approval Queue</title>
+    <link rel="stylesheet" href="/style.css">
+  </head>
+  <body>
+    <header>
+      <h1>Outreach Approval Queue</h1>
+      <p class="subtitle">Nothing in this pipeline sends anything automatically. Review each draft here before it goes out.</p>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-status="pending">Pending</button>
+      <button class="tab" data-status="approved">Approved</button>
+      <button class="tab" data-status="rejected">Rejected</button>
+    </nav>
+
+    <main>
+      <section id="list" class="list"></section>
+      <section id="detail" class="detail hidden"></section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

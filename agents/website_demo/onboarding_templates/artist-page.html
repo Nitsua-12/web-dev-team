@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ARTIST_NAME}} — Tattoo Artist at {{BUSINESS_NAME}}</title>
+    <meta name="description" content="{{ARTIST_NAME}}, tattoo artist at {{BUSINESS_NAME}} in {{CITY_STATE}}. Specializes in {{ARTIST_SPECIALTIES}}.">
+    <link rel="canonical" href="{{ARTIST_CANONICAL_URL}}">
+    <meta name="robots" content="index, follow">
+    <meta property="og:type" content="profile">
+    <meta property="og:site_name" content="{{BUSINESS_NAME}}">
+    <meta property="og:title" content="{{ARTIST_NAME}} — Tattoo Artist at {{BUSINESS_NAME}}">
+    <meta property="og:description" content="{{ARTIST_NAME}}, tattoo artist at {{BUSINESS_NAME}} in {{CITY_STATE}}. Specializes in {{ARTIST_SPECIALTIES}}.">
+    <meta property="og:url" content="{{ARTIST_CANONICAL_URL}}">
+    <meta property="og:locale" content="en_US">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ARTIST_NAME}} — Tattoo Artist at {{BUSINESS_NAME}}">
+    <meta name="twitter:description" content="{{ARTIST_NAME}}, tattoo artist at {{BUSINESS_NAME}} in {{CITY_STATE}}.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    {{PALETTE_STYLE_BLOCK}}
+    <!--
+      Person schema. worksFor.name/url should match the LocalBusiness block
+      in the site's own index.html exactly -- same business, same identity.
+      Drop the "image" line if no portfolio images are attached to this
+      artist yet; don't point it at a stock or placeholder photo.
+    -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "name": "{{ARTIST_NAME}}",
+  "jobTitle": "Tattoo Artist",
+  "url": "{{ARTIST_CANONICAL_URL}}",
+  "image": "{{ARTIST_PHOTO_URL}}",
+  "worksFor": {
+    "@type": "TattooParlor",
+    "name": "{{BUSINESS_NAME}}",
+    "url": "{{BUSINESS_CANONICAL_URL}}"
+  }
+}
+</script>
+  </head>
+  <body>
+    <nav class="site-nav">
+      <div class="container">
+        <a class="brand" href="../index.html">{{BUSINESS_NAME}}</a>
+        <button class="nav-toggle" aria-label="Toggle menu">&#9776;</button>
+        <ul class="nav-links">
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="../styles/index.html">Styles</a></li>
+          <li><a href="../artists/index.html">Artists</a></li>
+          <li><a href="../booking.html">Book</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <header class="hero" style="padding-bottom: 2rem;">
+      <div class="container hero-content">
+        <span class="eyebrow"><a class="breadcrumb" href="../artists/index.html">&larr; All Artists</a></span>
+        <h1 style="font-size:clamp(2.2rem,6vw,3.4rem);">{{ARTIST_NAME}}</h1>
+        <p class="tagline">{{ARTIST_SPECIALTIES}} &middot; {{ARTIST_EXPERIENCE}}</p>
+      </div>
+    </header>
+
+    <section style="padding-top:0;">
+      <div class="container about">
+        <!-- ARTIST_BIO: real bio text from the artist, first person or
+             third person, whatever they're comfortable with. Do not
+             write this on their behalf without review. -->
+        <p>{{ARTIST_BIO}}</p>
+      </div>
+    </section>
+
+    <section>
+      <div class="container section-head" data-reveal>
+        <span class="eyebrow">Portfolio</span>
+        <h2>Recent Work</h2>
+        <div class="rule"></div>
+      </div>
+      <div class="container">
+        <!--
+          ARTIST_PORTFOLIO_IMAGES: replace with real <figure> blocks, one
+          per image, using descriptive filenames and alt text -- e.g.
+          "black-and-grey-sleeve-tattoo-{{CITY_SLUG}}.jpg", not IMG_1234.jpg.
+          Only use images the artist/client has actually given permission
+          to publish -- see the SEO_CHECKLIST.md portfolio intake section.
+
+          <figure class="portfolio-item">
+            <img src="../images/artists/{{ARTIST_SLUG}}/black-and-grey-sleeve-tattoo-{{CITY_SLUG}}.jpg"
+                 alt="Black and grey sleeve tattoo by {{ARTIST_NAME}} at {{BUSINESS_NAME}} in {{CITY_STATE}}"
+                 loading="lazy" width="800" height="800">
+          </figure>
+        -->
+        {{ARTIST_PORTFOLIO_IMAGES}}
+      </div>
+    </section>
+
+    <section class="visit-band">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">Connect</span>
+          <h2>Follow {{ARTIST_NAME}}</h2>
+          <p><a href="{{ARTIST_INSTAGRAM_URL}}" target="_blank" rel="noopener">{{ARTIST_INSTAGRAM_HANDLE}}</a></p>
+          <div class="rule"></div>
+        </div>
+        <a class="btn btn-solid" href="../booking.html">Book with {{ARTIST_NAME}}</a>
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div>
+            <h4>{{BUSINESS_NAME}}</h4>
+            <p style="color:var(--ink-dim); font-size:0.95rem;">Tattoo &amp; Piercing Shop<br>{{STREET_ADDRESS}}</p>
+          </div>
+          <div>
+            <h4>Contact</h4>
+            <ul>
+              <li>{{PHONE}}</li>
+              <li>{{CITY_STATE}}</li>
+            </ul>
+          </div>
+          <div>
+            <h4>Explore</h4>
+            <ul>
+              <li><a href="../index.html">Home</a></li>
+              <li><a href="../artists/index.html">All Artists</a></li>
+              <li><a href="../booking.html">Book an Appointment</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <span>&copy; {{YEAR}} {{BUSINESS_NAME}}</span>
+          <span>{{CITY_STATE}}</span>
+        </div>
+      </div>
+    </footer>
+
+    <script src="../js/main.js"></script>
+  </body>
+</html>

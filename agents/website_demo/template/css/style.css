@@ -1,0 +1,320 @@
+/* Neutral tattoo-shop demo template -- original design, no photography.
+   Color variables are the personalization surface: generate_demo.py
+   overrides --accent/--accent-dark/--accent-soft per lead via an inline
+   <style> block injected in <head>, derived from that shop's own Google
+   listing photo (see photo_palette.py) -- these defaults are just the
+   fallback when no palette could be extracted. */
+
+:root {
+  --bg: #111113;
+  --bg-elev: #19191c;
+  --ink: #f3efe6;
+  --ink-dim: #a9a39a;
+  --accent: #c98a4b;
+  --accent-dark: #7c5228;
+  --accent-soft: #c98a4b33;
+  --radius: 3px;
+  --max: 1080px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter', system-ui, sans-serif;
+  line-height: 1.5;
+}
+
+h1, h2, h3 {
+  font-family: 'Bebas Neue', 'Inter', system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  margin: 0 0 0.4em;
+}
+
+a { color: inherit; }
+
+.container {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* --- Concept preview disclosure --- */
+.preview-bar {
+  background: var(--bg-elev);
+  border-bottom: 1px solid #ffffff14;
+  color: var(--ink-dim);
+  text-align: center;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  padding: 0.55em 1rem;
+}
+
+/* --- Nav --- */
+.site-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid #ffffff14;
+}
+.site-nav .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+}
+.brand {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.3rem;
+  letter-spacing: 0.05em;
+  text-decoration: none;
+}
+.nav-links {
+  display: flex;
+  gap: 2rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.nav-links a {
+  text-decoration: none;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.nav-links a.is-current,
+.nav-links a:hover {
+  color: var(--accent);
+}
+.nav-toggle {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--ink);
+  font-size: 1.4rem;
+}
+
+/* --- Hero --- */
+.hero {
+  position: relative;
+  overflow: hidden;
+  padding: 6rem 0 5rem;
+  text-align: center;
+}
+.hero-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 640px;
+  height: 640px;
+  pointer-events: none;
+  opacity: 0.5;
+}
+.hero-content { position: relative; }
+.eyebrow {
+  display: inline-block;
+  color: var(--accent);
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 0.8em;
+}
+.hero h1 {
+  font-size: clamp(3rem, 9vw, 6rem);
+  line-height: 0.95;
+}
+.tagline {
+  color: var(--ink-dim);
+  font-size: 1.15rem;
+  max-width: 34ch;
+  margin: 1em auto 2em;
+}
+.hero-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* --- Buttons --- */
+.btn {
+  display: inline-block;
+  padding: 0.85em 1.8em;
+  border-radius: var(--radius);
+  border: 1px solid #ffffff33;
+  text-decoration: none;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+  transition: border-color 0.2s;
+}
+.btn:hover { border-color: var(--accent); }
+.btn-solid {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #16110a;
+  font-weight: 600;
+}
+.btn-solid:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+
+/* --- Sections --- */
+section { padding: 4.5rem 0; }
+.section-head { text-align: center; margin-bottom: 2.5rem; }
+.rule {
+  width: 48px;
+  height: 2px;
+  background: var(--accent);
+  margin: 1em auto 0;
+}
+
+.about p {
+  max-width: 62ch;
+  margin: 0 auto 1.2em;
+  color: var(--ink-dim);
+  font-size: 1.05rem;
+  text-align: center;
+}
+
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+.service-card {
+  background: var(--bg-elev);
+  border: 1px solid #ffffff14;
+  border-radius: var(--radius);
+  padding: 1.6rem;
+}
+a.service-card {
+  display: block;
+  text-decoration: none;
+  transition: border-color 0.2s;
+}
+a.service-card:hover { border-color: var(--accent); }
+.service-card h3 {
+  font-size: 1.15rem;
+  color: var(--accent);
+  margin-bottom: 0.3em;
+}
+.service-card p {
+  color: var(--ink-dim);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+/* --- Onboarding placeholder note (artists/, styles/ demo pages) --- */
+.onboarding-note {
+  background: var(--bg-elev);
+  border: 1px dashed #ffffff2a;
+  border-radius: var(--radius);
+  padding: 1.4rem 1.6rem;
+  color: var(--ink-dim);
+  font-size: 0.9rem;
+  max-width: 62ch;
+  margin: 2rem auto 0;
+  text-align: center;
+}
+
+/* --- Breadcrumb (styles/*.html) --- */
+.breadcrumb {
+  color: var(--ink-dim);
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+.breadcrumb:hover { color: var(--accent); }
+
+.visit-band {
+  background: var(--bg-elev);
+  border-top: 1px solid #ffffff14;
+  border-bottom: 1px solid #ffffff14;
+  text-align: center;
+}
+.visit-band .rule { margin-bottom: 1.5em; }
+.visit-band p { font-size: 1.1rem; margin: 0.3em 0; }
+.visit-band a.btn { margin-top: 1.5em; }
+
+/* --- Footer --- */
+.site-footer {
+  padding: 3rem 0 2rem;
+  border-top: 1px solid #ffffff14;
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+.footer-grid h4 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-dim);
+  margin-bottom: 0.8em;
+}
+.footer-grid ul { list-style: none; margin: 0; padding: 0; }
+.footer-grid li { margin-bottom: 0.4em; color: var(--ink-dim); font-size: 0.95rem; }
+.footer-grid a { text-decoration: none; }
+.footer-grid a:hover { color: var(--accent); }
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5em;
+  font-size: 0.85rem;
+  color: var(--ink-dim);
+  border-top: 1px solid #ffffff14;
+  padding-top: 1.5rem;
+}
+
+/* --- Booking form --- */
+.booking-form {
+  max-width: 480px;
+  margin: 0 auto;
+  display: grid;
+  gap: 1.1rem;
+}
+.field label {
+  display: block;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-dim);
+  margin-bottom: 0.4em;
+}
+.field input,
+.field textarea {
+  width: 100%;
+  background: var(--bg-elev);
+  border: 1px solid #ffffff2a;
+  border-radius: var(--radius);
+  padding: 0.75em 0.9em;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 1rem;
+}
+.field input:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.booking-form .btn-solid { justify-self: start; }
+.form-confirmation {
+  display: none;
+  text-align: center;
+  padding: 3rem 0;
+}
+.form-confirmation.is-visible { display: block; }
+.form-confirmation h2 { color: var(--accent); }
+
+@media (max-width: 640px) {
+  .nav-links { display: none; }
+  .nav-toggle { display: block; }
+}

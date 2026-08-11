@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tattoo Styles — {{BUSINESS_NAME}}</title>
+    <meta name="description" content="Tattoo styles offered at {{BUSINESS_NAME}} in {{CITY_STATE}}: custom, fine line, black &amp; grey, realism, traditional, and cover-ups.">
+    {{CANONICAL_TAG}}
+    <meta name="robots" content="index, follow">
+    <meta property="og:type" content="business.business">
+    <meta property="og:site_name" content="{{BUSINESS_NAME}}">
+    <meta property="og:title" content="Tattoo Styles — {{BUSINESS_NAME}}">
+    <meta property="og:description" content="Tattoo styles offered at {{BUSINESS_NAME}} in {{CITY_STATE}}: custom, fine line, black &amp; grey, realism, traditional, and cover-ups.">
+    {{OG_URL_TAG}}
+    <meta property="og:locale" content="en_US">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Tattoo Styles — {{BUSINESS_NAME}}">
+    <meta name="twitter:description" content="Tattoo styles offered at {{BUSINESS_NAME}} in {{CITY_STATE}}.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    {{PALETTE_STYLE_BLOCK}}
+  </head>
+  <body>
+    <div class="preview-bar">Concept preview built for {{BUSINESS_NAME}} — not the final site.</div>
+    <nav class="site-nav">
+      <div class="container">
+        <a class="brand" href="../index.html">{{BUSINESS_NAME}}</a>
+        <button class="nav-toggle" aria-label="Toggle menu">&#9776;</button>
+        <ul class="nav-links">
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="index.html" class="is-current">Styles</a></li>
+          <li><a href="../artists/index.html">Artists</a></li>
+          <li><a href="../booking.html">Book</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <header class="hero" style="padding-bottom: 2rem;">
+      <div class="container hero-content">
+        <span class="eyebrow">{{CITY_STATE}}</span>
+        <h1 style="font-size:clamp(2.2rem,6vw,3.4rem);">Tattoo Styles</h1>
+        <p class="tagline">What {{BUSINESS_NAME}} works in, style by style.</p>
+      </div>
+    </header>
+
+    <section style="padding-top:0;">
+      <div class="container services-grid">
+        <a class="service-card" href="custom-tattoos.html">
+          <h3>Custom Tattoos</h3>
+          <p>Original designs built around your idea, from concept to final line.</p>
+        </a>
+        <a class="service-card" href="fine-line-tattoos.html">
+          <h3>Fine Line Tattoos</h3>
+          <p>Delicate linework and detailed compositions that hold up over time.</p>
+        </a>
+        <a class="service-card" href="black-and-grey-tattoos.html">
+          <h3>Black &amp; Grey Tattoos</h3>
+          <p>Shading-driven work with no color, from soft realism to bold blackwork.</p>
+        </a>
+        <a class="service-card" href="realism-tattoos.html">
+          <h3>Realism Tattoos</h3>
+          <p>Portraits and detailed pieces built to look photographic on skin.</p>
+        </a>
+        <a class="service-card" href="traditional-tattoos.html">
+          <h3>Traditional Tattoos</h3>
+          <p>Bold lines, solid color, and classic American tattoo imagery.</p>
+        </a>
+        <a class="service-card" href="cover-up-tattoos.html">
+          <h3>Touch-Ups &amp; Cover-Ups</h3>
+          <p>Refresh old work or transform it into something new.</p>
+        </a>
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div>
+            <h4>{{BUSINESS_NAME}}</h4>
+            <p style="color:var(--ink-dim); font-size:0.95rem;">Tattoo &amp; Piercing Shop<br>{{STREET_ADDRESS}}</p>
+          </div>
+          <div>
+            <h4>Contact</h4>
+            <ul>
+              <li>{{PHONE}}</li>
+              <li>{{CITY_STATE}}</li>
+            </ul>
+          </div>
+          <div>
+            <h4>Explore</h4>
+            <ul>
+              <li><a href="../index.html">Home</a></li>
+              <li><a href="../artists/index.html">Artists</a></li>
+              <li><a href="../booking.html">Book an Appointment</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <span>&copy; {{YEAR}} {{BUSINESS_NAME}}</span>
+          <span>{{CITY_STATE}}</span>
+        </div>
+      </div>
+    </footer>
+
+    <script src="../js/main.js"></script>
+  </body>
+</html>
