@@ -11,7 +11,7 @@ FIXTURE_WITH_FIELD_DATA = {
         "audits": {
             "largest-contentful-paint": {"numericValue": 4123.5, "displayValue": "4.1 s"},
             "cumulative-layout-shift": {"numericValue": 0.15, "displayValue": "0.15"},
-            "viewport": {"score": 1},
+            "viewport-insight": {"score": 1},
         },
     },
     "loadingExperience": {
@@ -29,7 +29,7 @@ FIXTURE_WITHOUT_FIELD_DATA = {
         "audits": {
             "largest-contentful-paint": {"numericValue": 1200.0, "displayValue": "1.2 s"},
             "cumulative-layout-shift": {"numericValue": 0.01, "displayValue": "0.01"},
-            "viewport": {"score": 1},
+            "viewport-insight": {"score": 1},
         },
     },
     # no loadingExperience key at all -- realistic for a low-traffic small-business site

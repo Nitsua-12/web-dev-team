@@ -29,7 +29,7 @@ def parse_pagespeed_result(raw: dict) -> dict:
 
     lcp_audit = audits.get("largest-contentful-paint", {})
     cls_audit = audits.get("cumulative-layout-shift", {})
-    viewport_audit = audits.get("viewport", {})
+    viewport_audit = audits.get("viewport-insight", {})
 
     metrics = raw.get("loadingExperience", {}).get("metrics", {})
 
