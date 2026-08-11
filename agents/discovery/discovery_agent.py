@@ -62,6 +62,8 @@ FAKE_PLACES_FOR_DRY_RUN = [
 def run(db_path: str, limit_cities: int | None, dry_run: bool, state_filter: str | None) -> None:
     api_key = os.environ.get("GOOGLE_PLACES_API_KEY", "")
     psi_api_key = os.environ.get("PSI_API_KEY", "")
+    if not dry_run and not psi_api_key:
+        print("WARNING: PSI_API_KEY is not set. Website audits will fail for every qualified_outdated lead this run.")
     db.init_db(db_path)
     conn = db.get_connection(db_path)
 
@@ -98,16 +100,32 @@ def run(db_path: str, limit_cities: int | None, dry_run: bool, state_filter: str
             print(f"  [{lead['qualification_status']}] {lead['business_name']}")
 
             if not dry_run and lead["qualification_status"] == "qualified_outdated":
-                audit_result = site_audit.audit_site(lead["website_url"], psi_api_key)
-                db.update_lead_audit(
-                    conn,
-                    lead["google_place_id"],
-                    audit_result["status"],
-                    audit_result["score"],
-                    audit_result["signals"],
-                    audit_result["run_at"],
-                )
-                print(f"    audit: {audit_result['status']} (score={audit_result['score']})")
+                try:
+                    audit_result = site_audit.audit_site(lead["website_url"], psi_api_key)
+                    db.update_lead_audit(
+                        conn,
+                        lead["google_place_id"],
+                        audit_result["status"],
+                        audit_result["score"],
+                        audit_result["signals"],
+                        audit_result["run_at"],
+                    )
+                    print(f"    audit: {audit_result['status']} (score={audit_result['score']})")
+                except Exception as exc:
+                    # Last line of defense: any unexpected failure in the audit
+                    # path must not propagate out of run() and crash the batch --
+                    # that would leave this cell's search un-marked-done and
+                    # cause it to be re-searched (and re-billed) against the
+                    # Places API on the next run.
+                    db.update_lead_audit(
+                        conn,
+                        lead["google_place_id"],
+                        "error",
+                        None,
+                        {"unexpected_error": str(exc)},
+                        _now_iso(),
+                    )
+                    print(f"    audit: ERROR (unexpected: {exc})")
 
         db.mark_cell_done(conn, label, len(places), _now_iso())
 

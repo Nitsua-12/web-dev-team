@@ -69,7 +69,10 @@ def run_pagespeed(url: str, api_key: str, max_retries: int = 3, client: httpx.Cl
             except httpx.HTTPError as exc:
                 raise PsiApiError(f"PSI API request failed: {exc}") from exc
             if response.status_code == 200:
-                return response.json()
+                try:
+                    return response.json()
+                except ValueError as exc:
+                    raise PsiApiError(f"PSI API returned invalid JSON: {exc}") from exc
             if response.status_code in (429, 500, 502, 503):
                 last_error = f"{response.status_code}: {response.text}"
                 time.sleep(2 ** attempt)

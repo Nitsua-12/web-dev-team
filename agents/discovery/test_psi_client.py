@@ -105,6 +105,13 @@ class RunPagespeedTests(unittest.TestCase):
         with self.assertRaises(psi_client.PsiApiError):
             psi_client.run_pagespeed("https://example.com", "")
 
+    def test_raises_psi_api_error_on_invalid_json_body(self):
+        def handler(request):
+            return httpx.Response(200, text="<html>not json</html>")
+        client = httpx.Client(transport=httpx.MockTransport(handler))
+        with self.assertRaises(psi_client.PsiApiError):
+            psi_client.run_pagespeed("https://example.com", "fake-key", client=client)
+
     def test_raises_psi_api_error_on_transport_failure(self):
         def handler(request):
             raise httpx.ConnectError("connection refused", request=request)
