@@ -29,7 +29,11 @@ CREATE TABLE IF NOT EXISTS leads (
     discovery_source    TEXT NOT NULL DEFAULT 'google_places',
     search_cell         TEXT,                          -- FK-ish, references search_cells.label
     discovered_at       TEXT NOT NULL,
-    raw_places_json     TEXT
+    raw_places_json     TEXT,
+    audit_status        TEXT NOT NULL DEFAULT 'not_run',
+    audit_score         INTEGER,
+    audit_signals       TEXT,
+    audit_run_at        TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_leads_qualification ON leads (qualification_status);

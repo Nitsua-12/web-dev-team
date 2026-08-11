@@ -4,6 +4,13 @@ from pathlib import Path
 
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
+AUDIT_COLUMNS = {
+    "audit_status": "TEXT NOT NULL DEFAULT 'not_run'",
+    "audit_score": "INTEGER",
+    "audit_signals": "TEXT",
+    "audit_run_at": "TEXT",
+}
+
 
 def get_connection(db_path: str) -> sqlite3.Connection:
     conn = sqlite3.connect(db_path)
@@ -12,11 +19,20 @@ def get_connection(db_path: str) -> sqlite3.Connection:
     return conn
 
 
+def _migrate_audit_columns(conn: sqlite3.Connection) -> None:
+    existing = {row["name"] for row in conn.execute("PRAGMA table_info(leads)").fetchall()}
+    for column, definition in AUDIT_COLUMNS.items():
+        if column not in existing:
+            conn.execute(f"ALTER TABLE leads ADD COLUMN {column} {definition}")
+    conn.commit()
+
+
 def init_db(db_path: str) -> None:
     conn = get_connection(db_path)
     try:
         conn.executescript(SCHEMA_PATH.read_text())
         conn.commit()
+        _migrate_audit_columns(conn)
     finally:
         conn.close()
 
@@ -77,5 +93,24 @@ def upsert_lead(conn: sqlite3.Connection, lead: dict) -> None:
         """,
         {**lead, "website_signals": json.dumps(lead.get("website_signals") or {}),
          "raw_places_json": json.dumps(lead.get("raw_places_json") or {})},
+    )
+    conn.commit()
+
+
+def update_lead_audit(
+    conn: sqlite3.Connection,
+    google_place_id: str,
+    audit_status: str,
+    audit_score: int | None,
+    audit_signals: dict,
+    audit_run_at: str,
+) -> None:
+    conn.execute(
+        """
+        UPDATE leads
+        SET audit_status = ?, audit_score = ?, audit_signals = ?, audit_run_at = ?
+        WHERE google_place_id = ?
+        """,
+        (audit_status, audit_score, json.dumps(audit_signals or {}), audit_run_at, google_place_id),
     )
     conn.commit()
