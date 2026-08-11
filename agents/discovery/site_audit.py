@@ -9,6 +9,7 @@ import json
 import re
 from urllib.parse import urljoin, urlparse
 
+import httpx
 import psi_client
 import site_check
 
@@ -114,3 +115,34 @@ def has_contact_form_or_booking_link(html: str) -> bool:
 def has_cta(html: str) -> bool:
     lower_html = html.lower()
     return any(phrase in lower_html for phrase in CTA_PHRASES)
+
+
+def fetch_homepage_html(url: str, timeout: float = 10.0, client: "httpx.Client | None" = None) -> tuple[str | None, str | None]:
+    """Returns (html, error). html is None if robots.txt disallows the
+    fetch or the request fails; error explains why when html is None."""
+    if not site_check.robots_allow_fetch(url):
+        return None, "robots_disallowed"
+
+    owns_client = client is None
+    client = client or httpx.Client(timeout=timeout, follow_redirects=True)
+    try:
+        response = client.get(url, headers={"User-Agent": USER_AGENT})
+        return response.text, None
+    except httpx.HTTPError as exc:
+        return None, str(exc)
+    finally:
+        if owns_client:
+            client.close()
+
+
+def check_url_exists(url: str, client: "httpx.Client | None" = None) -> bool:
+    owns_client = client is None
+    client = client or httpx.Client(timeout=10.0, follow_redirects=True)
+    try:
+        response = client.head(url, headers={"User-Agent": USER_AGENT})
+        return response.status_code == 200
+    except httpx.HTTPError:
+        return False
+    finally:
+        if owns_client:
+            client.close()

@@ -38,7 +38,7 @@ STALE_TECH_MARKERS = [
 def check_website(url: str) -> dict:
     signals: dict = {}
 
-    if not _robots_allow_fetch(url):
+    if not robots_allow_fetch(url):
         signals["robots_disallowed"] = True
         return {"status": "unknown", "score": 0, "signals": signals}
 
@@ -88,7 +88,7 @@ def _find_stale_copyright_year(html: str) -> int | None:
     return year if (current_year - year) >= STALE_YEAR_THRESHOLD else None
 
 
-def _robots_allow_fetch(url: str) -> bool:
+def robots_allow_fetch(url: str) -> bool:
     parsed = urlparse(url)
     robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
     parser = urllib.robotparser.RobotFileParser()

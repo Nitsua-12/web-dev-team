@@ -1,4 +1,7 @@
 import unittest
+from unittest.mock import patch
+
+import httpx
 
 import site_audit
 
@@ -85,6 +88,50 @@ class OnPageSeoParserTests(unittest.TestCase):
 
     def test_cta_absent(self):
         self.assertFalse(site_audit.has_cta("<p>Welcome to our shop</p>"))
+
+
+class FetchHomepageHtmlTests(unittest.TestCase):
+    def test_returns_html_on_success(self):
+        def handler(request):
+            return httpx.Response(200, text="<html>hi</html>")
+        client = httpx.Client(transport=httpx.MockTransport(handler))
+        html, error = site_audit.fetch_homepage_html("https://example.com", client=client)
+        self.assertEqual(html, "<html>hi</html>")
+        self.assertIsNone(error)
+
+    def test_returns_error_on_http_failure(self):
+        def handler(request):
+            raise httpx.ConnectTimeout("timed out", request=request)
+        client = httpx.Client(transport=httpx.MockTransport(handler))
+        html, error = site_audit.fetch_homepage_html("https://example.com", client=client)
+        self.assertIsNone(html)
+        self.assertIsNotNone(error)
+
+    @patch("site_audit.site_check.robots_allow_fetch", return_value=False)
+    def test_respects_robots_disallow(self, _mock):
+        html, error = site_audit.fetch_homepage_html("https://example.com")
+        self.assertIsNone(html)
+        self.assertEqual(error, "robots_disallowed")
+
+
+class CheckUrlExistsTests(unittest.TestCase):
+    def test_true_on_200(self):
+        def handler(request):
+            return httpx.Response(200)
+        client = httpx.Client(transport=httpx.MockTransport(handler))
+        self.assertTrue(site_audit.check_url_exists("https://example.com/sitemap.xml", client=client))
+
+    def test_false_on_404(self):
+        def handler(request):
+            return httpx.Response(404)
+        client = httpx.Client(transport=httpx.MockTransport(handler))
+        self.assertFalse(site_audit.check_url_exists("https://example.com/sitemap.xml", client=client))
+
+    def test_false_on_connection_error(self):
+        def handler(request):
+            raise httpx.ConnectError("refused", request=request)
+        client = httpx.Client(transport=httpx.MockTransport(handler))
+        self.assertFalse(site_audit.check_url_exists("https://example.com/sitemap.xml", client=client))
 
 
 if __name__ == "__main__":
