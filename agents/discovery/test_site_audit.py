@@ -91,7 +91,8 @@ class OnPageSeoParserTests(unittest.TestCase):
 
 
 class FetchHomepageHtmlTests(unittest.TestCase):
-    def test_returns_html_on_success(self):
+    @patch("site_audit.site_check.robots_allow_fetch", return_value=True)
+    def test_returns_html_on_success(self, _mock):
         def handler(request):
             return httpx.Response(200, text="<html>hi</html>")
         client = httpx.Client(transport=httpx.MockTransport(handler))
@@ -99,7 +100,8 @@ class FetchHomepageHtmlTests(unittest.TestCase):
         self.assertEqual(html, "<html>hi</html>")
         self.assertIsNone(error)
 
-    def test_returns_error_on_http_failure(self):
+    @patch("site_audit.site_check.robots_allow_fetch", return_value=True)
+    def test_returns_error_on_http_failure(self, _mock):
         def handler(request):
             raise httpx.ConnectTimeout("timed out", request=request)
         client = httpx.Client(transport=httpx.MockTransport(handler))
