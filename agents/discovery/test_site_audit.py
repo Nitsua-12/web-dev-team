@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import httpx
 
+import psi_client
 import site_audit
 
 
@@ -134,6 +135,48 @@ class CheckUrlExistsTests(unittest.TestCase):
             raise httpx.ConnectError("refused", request=request)
         client = httpx.Client(transport=httpx.MockTransport(handler))
         self.assertFalse(site_audit.check_url_exists("https://example.com/sitemap.xml", client=client))
+
+
+class AuditSiteTests(unittest.TestCase):
+    def test_skipped_when_no_url(self):
+        result = site_audit.audit_site("", "fake-key")
+        self.assertEqual(result["status"], "skipped")
+        self.assertIsNone(result["score"])
+
+    @patch("site_audit.fetch_homepage_html", return_value=(None, "robots_disallowed"))
+    def test_skipped_when_fetch_fails(self, _mock):
+        result = site_audit.audit_site("https://example.com", "fake-key")
+        self.assertEqual(result["status"], "skipped")
+        self.assertEqual(result["signals"]["fetch_error"], "robots_disallowed")
+
+    @patch("site_audit.psi_client.run_pagespeed", side_effect=psi_client.PsiApiError("boom"))
+    @patch("site_audit.check_url_exists", return_value=True)
+    @patch("site_audit.fetch_homepage_html", return_value=("<html><title>Shop</title></html>", None))
+    def test_status_error_when_psi_fails_but_keeps_onpage_signals(self, _fetch, _url_exists, _psi):
+        result = site_audit.audit_site("https://example.com", "fake-key")
+        self.assertEqual(result["status"], "error")
+        self.assertIsNone(result["score"])
+        self.assertEqual(result["signals"]["title"], "Shop")
+        self.assertIn("psi_error", result["signals"])
+
+    @patch(
+        "site_audit.psi_client.run_pagespeed",
+        return_value={
+            "lighthouseResult": {
+                "categories": {"performance": {"score": 0.75}},
+                "audits": {},
+            }
+        },
+    )
+    @patch("site_audit.check_url_exists", return_value=True)
+    @patch("site_audit.fetch_homepage_html", return_value=("<html><title>Shop</title></html>", None))
+    def test_status_ok_full_flow(self, _fetch, _url_exists, _psi):
+        result = site_audit.audit_site("https://example.com", "fake-key")
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["score"], 75)
+        self.assertTrue(result["signals"]["sitemap_exists"])
+        self.assertTrue(result["signals"]["robots_txt_exists"])
+        self.assertEqual(result["signals"]["title"], "Shop")
 
 
 if __name__ == "__main__":

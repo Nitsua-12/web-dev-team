@@ -146,3 +146,41 @@ def check_url_exists(url: str, client: "httpx.Client | None" = None) -> bool:
     finally:
         if owns_client:
             client.close()
+
+
+def audit_site(url: str, psi_api_key: str) -> dict:
+    run_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    if not url:
+        return {"status": "skipped", "score": None, "signals": {}, "run_at": run_at}
+
+    html, fetch_error = fetch_homepage_html(url)
+    if html is None:
+        return {"status": "skipped", "score": None, "signals": {"fetch_error": fetch_error}, "run_at": run_at}
+
+    signals: dict = {
+        "title": extract_title(html),
+        "meta_description": extract_meta_description(html),
+        "h1_count": count_h1(html),
+        "heading_hierarchy_skip": has_heading_hierarchy_skip(html),
+        "self_referencing_canonical": has_self_referencing_canonical(html, url),
+        "noindex": has_noindex_robots_meta(html),
+        "json_ld_local_business": has_json_ld_local_business(html),
+        "phone_number": extract_phone_number(html),
+        "contact_form_or_booking_link": has_contact_form_or_booking_link(html),
+        "cta_present": has_cta(html),
+    }
+
+    parsed = urlparse(url)
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    signals["sitemap_exists"] = check_url_exists(urljoin(origin, "/sitemap.xml"))
+    signals["robots_txt_exists"] = check_url_exists(urljoin(origin, "/robots.txt"))
+
+    try:
+        raw_psi = psi_client.run_pagespeed(url, psi_api_key)
+        psi_signals = psi_client.parse_pagespeed_result(raw_psi)
+        signals.update(psi_signals)
+        return {"status": "ok", "score": psi_signals["performance_score"], "signals": signals, "run_at": run_at}
+    except psi_client.PsiApiError as exc:
+        signals["psi_error"] = str(exc)
+        return {"status": "error", "score": None, "signals": signals, "run_at": run_at}
