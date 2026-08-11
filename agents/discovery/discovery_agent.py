@@ -27,6 +27,7 @@ from dotenv import load_dotenv
 
 import db
 import places_client
+import site_audit
 import site_check
 from cities_seed import DEFAULT_RADIUS_M, SEED_CITIES
 
@@ -60,6 +61,7 @@ FAKE_PLACES_FOR_DRY_RUN = [
 
 def run(db_path: str, limit_cities: int | None, dry_run: bool, state_filter: str | None) -> None:
     api_key = os.environ.get("GOOGLE_PLACES_API_KEY", "")
+    psi_api_key = os.environ.get("PSI_API_KEY", "")
     db.init_db(db_path)
     conn = db.get_connection(db_path)
 
@@ -94,6 +96,18 @@ def run(db_path: str, limit_cities: int | None, dry_run: bool, state_filter: str
             db.upsert_lead(conn, lead)
             total_leads += 1
             print(f"  [{lead['qualification_status']}] {lead['business_name']}")
+
+            if not dry_run and lead["qualification_status"] == "qualified_outdated":
+                audit_result = site_audit.audit_site(lead["website_url"], psi_api_key)
+                db.update_lead_audit(
+                    conn,
+                    lead["google_place_id"],
+                    audit_result["status"],
+                    audit_result["score"],
+                    audit_result["signals"],
+                    audit_result["run_at"],
+                )
+                print(f"    audit: {audit_result['status']} (score={audit_result['score']})")
 
         db.mark_cell_done(conn, label, len(places), _now_iso())
 

@@ -61,6 +61,29 @@ For each place returned by Places Text Search:
 - **Fetch blocked by robots.txt or failed** -> `needs_review` (don't
   guess; a human or a later pass should look at these).
 
+## Website audit (qualified_outdated leads only)
+
+For every lead that qualifies as `qualified_outdated`, a second pass
+(`site_audit.py`) runs a real audit: PageSpeed Insights performance score
+and Core Web Vitals (LCP, CLS, INP field data where available), plus
+deterministic on-page SEO checks (title/meta description length, H1
+count, heading hierarchy, canonical tag, `noindex` detection, structured
+data, sitemap/robots.txt existence) and conversion checks (phone number,
+contact form/booking link, CTA presence). Results land in the `leads`
+table's `audit_status`, `audit_score`, `audit_signals`, and
+`audit_run_at` columns.
+
+This does **not** run for `qualified_no_website` (nothing to audit) or
+`disqualified_modern` (never contacted) leads.
+
+Requires `PSI_API_KEY` in `.env` -- enable the PageSpeed Insights API on
+the same Google Cloud project used for Places, then create/reuse an API
+key. PageSpeed Insights and CrUX are both free, quota-limited APIs, not
+billed.
+
+Never runs during `--dry-run` (the PSI call is explicitly skipped
+regardless of the fake data's qualification status).
+
 ## Scaling beyond the pilot batch
 
 `cities_seed.py` currently has ~25 major metros. This was a deliberate
