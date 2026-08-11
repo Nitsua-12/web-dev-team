@@ -1,4 +1,7 @@
 import unittest
+from unittest.mock import patch
+
+import httpx
 
 import psi_client
 
@@ -58,6 +61,49 @@ class ParsePagespeedResultTests(unittest.TestCase):
         self.assertIsNone(result["performance_score"])
         self.assertIsNone(result["lcp_ms"])
         self.assertIsNone(result["viewport_ok"])
+
+
+class RunPagespeedTests(unittest.TestCase):
+    def test_returns_json_on_200(self):
+        def handler(request):
+            return httpx.Response(200, json={"lighthouseResult": {}})
+        client = httpx.Client(transport=httpx.MockTransport(handler))
+        result = psi_client.run_pagespeed("https://example.com", "fake-key", client=client)
+        self.assertEqual(result, {"lighthouseResult": {}})
+
+    @patch("psi_client.time.sleep")
+    def test_retries_on_429_then_succeeds(self, _mock_sleep):
+        calls = {"count": 0}
+
+        def handler(request):
+            calls["count"] += 1
+            if calls["count"] < 3:
+                return httpx.Response(429, text="rate limited")
+            return httpx.Response(200, json={"ok": True})
+
+        client = httpx.Client(transport=httpx.MockTransport(handler))
+        result = psi_client.run_pagespeed("https://example.com", "fake-key", max_retries=3, client=client)
+        self.assertEqual(result, {"ok": True})
+        self.assertEqual(calls["count"], 3)
+
+    @patch("psi_client.time.sleep")
+    def test_raises_after_exhausting_retries(self, _mock_sleep):
+        def handler(request):
+            return httpx.Response(500, text="server error")
+        client = httpx.Client(transport=httpx.MockTransport(handler))
+        with self.assertRaises(psi_client.PsiApiError):
+            psi_client.run_pagespeed("https://example.com", "fake-key", max_retries=2, client=client)
+
+    def test_raises_immediately_on_non_retryable_status(self):
+        def handler(request):
+            return httpx.Response(403, text="forbidden")
+        client = httpx.Client(transport=httpx.MockTransport(handler))
+        with self.assertRaises(psi_client.PsiApiError):
+            psi_client.run_pagespeed("https://example.com", "fake-key", max_retries=3, client=client)
+
+    def test_raises_without_api_key(self):
+        with self.assertRaises(psi_client.PsiApiError):
+            psi_client.run_pagespeed("https://example.com", "")
 
 
 if __name__ == "__main__":

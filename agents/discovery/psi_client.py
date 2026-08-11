@@ -43,3 +43,36 @@ def parse_pagespeed_result(raw: dict) -> dict:
         "field_inp_category": metrics.get("INTERACTION_TO_NEXT_PAINT", {}).get("category"),
         "has_field_data": bool(metrics),
     }
+
+
+def run_pagespeed(url: str, api_key: str, max_retries: int = 3, client: httpx.Client | None = None) -> dict:
+    """Call PSI v5 for `url` (mobile strategy, performance+seo categories).
+    Returns the raw parsed JSON response -- pass it to
+    parse_pagespeed_result() for the fields site_audit.py needs."""
+    if not api_key:
+        raise PsiApiError("PSI_API_KEY is not set")
+
+    params = {
+        "url": url,
+        "key": api_key,
+        "strategy": "mobile",
+        "category": ["performance", "seo"],
+    }
+
+    owns_client = client is None
+    client = client or httpx.Client(timeout=30.0)
+    try:
+        last_error = None
+        for attempt in range(max_retries):
+            response = client.get(PSI_URL, params=params)
+            if response.status_code == 200:
+                return response.json()
+            if response.status_code in (429, 500, 502, 503):
+                last_error = f"{response.status_code}: {response.text}"
+                time.sleep(2 ** attempt)
+                continue
+            raise PsiApiError(f"PSI API error {response.status_code}: {response.text}")
+        raise PsiApiError(f"PSI API failed after {max_retries} retries: {last_error}")
+    finally:
+        if owns_client:
+            client.close()
