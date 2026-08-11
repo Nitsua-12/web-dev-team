@@ -1,0 +1,19 @@
+# Secrets
+.env
+**/.env
+
+# Local databases (operational state, not source)
+*.db
+**/*.db
+
+# Python
+.venv/
+**/.venv/
+__pycache__/
+**/__pycache__/
+
+# Claude Code local-only settings
+.claude/settings.local.json
+
+# Per-run operational logs
+logs/
