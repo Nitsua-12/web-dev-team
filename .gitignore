@@ -17,3 +17,6 @@ __pycache__/
 
 # Per-run operational logs
 logs/
+
+# Git worktrees for isolated feature work
+.worktrees/
