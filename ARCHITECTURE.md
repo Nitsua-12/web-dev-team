@@ -52,7 +52,7 @@ This works because every stage's output is meant to be reviewed before the next 
 
 **Current:** SQLite, one file (`agents/discovery/leads.db`), two tables:
 
-- `leads` — one row per business (identity, NAP, qualification status, website heuristic signals, discovery provenance, raw API response for audit)
+- `leads` — one row per business (identity, NAP, qualification status, website heuristic signals, discovery provenance, raw API response for audit); also carries `audit_status`, `audit_score`, `audit_signals`, `audit_run_at` columns populated by the website-audit step for `qualified_outdated` leads
 - `search_cells` — one row per city/state search, tracking pending/done/error for resumability
 
 SQLite was the right choice for the pilot scale (hundreds of leads) — zero setup, single file, no server to run. **Migration trigger:** move to Postgres when either (a) more than one process needs to write concurrently (e.g., a scheduled Discovery run overlapping a human reading the dossier agent's queries), or (b) lead volume grows past what a single file comfortably handles (rough rule of thumb: tens of thousands of rows, well before actual SQLite limits, just for operational sanity — backups, replication, query tooling).
@@ -178,6 +178,7 @@ F:\ClaudeProjects\
 ├── agents\
 │   ├── discovery\
 │   │   ├── discovery_agent.py, places_client.py, site_check.py, db.py, schema.sql, cities_seed.py
+│   │   ├── psi_client.py, site_audit.py <- website audit for qualified_outdated leads: PSI performance/CWV + on-page SEO/conversion signals
 │   │   ├── leads.db             <- shared SQLite DB, read by every downstream agent
 │   │   ├── .env, requirements.txt, README.md
 │   ├── website_demo\
