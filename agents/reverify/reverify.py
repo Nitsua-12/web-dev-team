@@ -36,18 +36,28 @@ from dotenv import load_dotenv
 def _load_module(name: str, path: Path):
     # A module loaded this way (by file path, not as a package) doesn't
     # automatically get its own directory on sys.path -- so if it imports
-    # a sibling module in the same directory (e.g. places_client.py
-    # importing http_retry.py), that import fails unless the directory
-    # is already there. Discovery's modules are only ever run normally
-    # from within their own directory (where this isn't an issue) or
-    # loaded this way from reverify -- so this is the one place that
-    # needs the fix.
+    # a sibling module in the same directory at its own top level (e.g.
+    # places_client.py importing http_retry.py), that import fails unless
+    # the directory is already there. The insertion is scoped to just this
+    # load (removed in `finally`, only if we're the one who added it) --
+    # left permanently, two directories each containing a same-named
+    # module (agents/discovery/db.py and agents/reverify/db.py both
+    # exist) would let whichever was inserted last silently shadow the
+    # other for any *later* bare `import db` anywhere else in the
+    # process. This only covers imports at the loaded module's top level,
+    # not ones deferred into a function body -- true of every sibling
+    # import in these modules today.
     module_dir = str(path.parent)
-    if module_dir not in sys.path:
+    added = module_dir not in sys.path
+    if added:
         sys.path.insert(0, module_dir)
-    spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    try:
+        spec = importlib.util.spec_from_file_location(name, path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+    finally:
+        if added:
+            sys.path.remove(module_dir)
     return module
 
 

@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 import httpx
 
@@ -35,6 +35,8 @@ class RequestWithRetryTests(unittest.TestCase):
         response = http_retry.request_with_retry(request_fn, FakeApiError, "Fake API", max_retries=3)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(calls["count"], 3)
+        # Pins the 2**attempt backoff progression, not just that *a* sleep happened.
+        _mock_sleep.assert_has_calls([call(1), call(2)])
 
     @patch("http_retry.time.sleep")
     def test_retries_on_500_502_503(self, _mock_sleep):
@@ -53,11 +55,15 @@ class RequestWithRetryTests(unittest.TestCase):
 
     @patch("http_retry.time.sleep")
     def test_raises_after_exhausting_retries(self, _mock_sleep):
+        calls = {"count": 0}
+
         def request_fn():
+            calls["count"] += 1
             return httpx.Response(500, text="server error")
 
         with self.assertRaises(FakeApiError):
             http_retry.request_with_retry(request_fn, FakeApiError, "Fake API", max_retries=2)
+        self.assertEqual(calls["count"], 2)
 
     def test_raises_immediately_on_non_retryable_status(self):
         calls = {"count": 0}

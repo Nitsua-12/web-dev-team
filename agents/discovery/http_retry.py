@@ -7,7 +7,7 @@ JSON parsing. This is the one implementation both use now.
 """
 
 import time
-from typing import Callable
+from collections.abc import Callable
 
 import httpx
 

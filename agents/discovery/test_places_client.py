@@ -43,6 +43,22 @@ class SearchTextTests(unittest.TestCase):
         with self.assertRaises(places_client.PlacesApiError):
             places_client.search_text("tattoo shop", "")
 
+    def test_raises_places_api_error_on_transport_failure(self):
+        def handler(request):
+            raise httpx.ConnectError("connection refused", request=request)
+
+        client = httpx.Client(transport=httpx.MockTransport(handler))
+        with self.assertRaises(places_client.PlacesApiError):
+            places_client.search_text("tattoo shop", "fake-key", client=client)
+
+    def test_raises_places_api_error_on_invalid_json(self):
+        def handler(request):
+            return httpx.Response(200, text="<html>not json</html>")
+
+        client = httpx.Client(transport=httpx.MockTransport(handler))
+        with self.assertRaises(places_client.PlacesApiError):
+            places_client.search_text("tattoo shop", "fake-key", client=client)
+
 
 class GetPlaceDetailsTests(unittest.TestCase):
     def test_returns_json_on_200(self):
