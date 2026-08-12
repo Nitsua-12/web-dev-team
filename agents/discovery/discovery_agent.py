@@ -148,12 +148,7 @@ def _place_to_lead(place: dict, search_cell: str) -> dict:
         result = site_check.check_website(website_url)
         website_status = result["status"]
         website_signals = result["signals"]
-        if website_status == "outdated":
-            qualification_status = "qualified_outdated"
-        elif website_status == "modern":
-            qualification_status = "disqualified_modern"
-        else:
-            qualification_status = "needs_review"
+        qualification_status = site_check.qualification_for_status(website_status)
 
     return {
         "google_place_id": place["id"],

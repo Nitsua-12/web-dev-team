@@ -10,9 +10,13 @@ in place when reality has changed.
 No LLM calls, same as Discovery itself — this is pure API + rule-based
 classification, deterministic and cheap. It reuses Discovery's own
 `places_client.py` and `site_check.py` directly (by file path, not
-duplicated), so a re-check lands in exactly the same bucket a fresh
-Discovery run would put it in — there's only one classification
-implementation in this project, not two that could quietly drift apart.
+duplicated) for both halves of classification -- the heuristic scoring
+(`check_website()`) and the status-to-qualification mapping
+(`qualification_for_status()`, extracted from what used to be two
+separately-written copies of the same if/elif/else) -- so a re-check
+lands in exactly the same bucket a fresh Discovery run would put it in.
+One classification implementation in this project, genuinely, not two
+that could quietly drift apart.
 
 ## Running
 

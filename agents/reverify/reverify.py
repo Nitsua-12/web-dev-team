@@ -76,18 +76,15 @@ if hasattr(sys.stdout, "reconfigure"):
 
 
 def classify_website(url: str | None) -> tuple[str, str]:
-    """Mirrors discovery_agent.py's _place_to_lead classification exactly,
-    so a lead re-checked here lands in the same bucket a fresh Discovery
-    run would put it in."""
+    """Uses discovery_agent.py's exact status->qualification mapping
+    (site_check.qualification_for_status), not a mirrored copy, so a lead
+    re-checked here lands in the same bucket a fresh Discovery run would
+    put it in -- one implementation, not two that could quietly drift."""
     if not url:
         return "none", "qualified_no_website"
     result = site_check.check_website(url)
     status = result["status"]
-    if status == "outdated":
-        return status, "qualified_outdated"
-    if status == "modern":
-        return status, "disqualified_modern"
-    return status, "needs_review"  # unknown (robots-blocked) or error
+    return status, site_check.qualification_for_status(status)
 
 
 def apply_lead_update(

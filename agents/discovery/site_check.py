@@ -89,6 +89,23 @@ def check_website(url: str) -> dict:
     return {"status": status, "score": score, "signals": signals}
 
 
+def qualification_for_status(website_status: str) -> str:
+    """Maps a check_website() status ('outdated'/'modern'/'unknown'/'error')
+    to a qualification_status. Shared by discovery_agent.py (initial
+    discovery) and reverify.py (re-checking an existing lead) so a lead
+    lands in the same bucket regardless of which one classifies it -- one
+    implementation, not two that could quietly drift apart. Does not
+    handle the "no website at all" -> qualified_no_website case, since
+    that's a precondition callers check before ever calling
+    check_website() in the first place, not a status this function ever
+    sees."""
+    if website_status == "outdated":
+        return "qualified_outdated"
+    if website_status == "modern":
+        return "disqualified_modern"
+    return "needs_review"
+
+
 def _find_stale_copyright_year(html: str) -> int | None:
     matches = re.findall(r"(?:©|copyright)\s*(\d{4})", html, re.IGNORECASE)
     if not matches:

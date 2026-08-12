@@ -76,5 +76,25 @@ class CheckWebsiteStatusCodeTests(unittest.TestCase):
         self.assertTrue(result["signals"]["robots_disallowed"])
 
 
+class QualificationForStatusTests(unittest.TestCase):
+    def test_outdated_maps_to_qualified_outdated(self):
+        self.assertEqual(site_check.qualification_for_status("outdated"), "qualified_outdated")
+
+    def test_modern_maps_to_disqualified_modern(self):
+        self.assertEqual(site_check.qualification_for_status("modern"), "disqualified_modern")
+
+    def test_unknown_maps_to_needs_review(self):
+        self.assertEqual(site_check.qualification_for_status("unknown"), "needs_review")
+
+    def test_error_maps_to_needs_review(self):
+        self.assertEqual(site_check.qualification_for_status("error"), "needs_review")
+
+    def test_unrecognized_status_falls_back_to_needs_review(self):
+        # Anything that isn't exactly "outdated" or "modern" is treated as
+        # "don't guess" -- this is the same conservative default check_website()
+        # itself uses for its own unknown/error statuses.
+        self.assertEqual(site_check.qualification_for_status("something-new"), "needs_review")
+
+
 if __name__ == "__main__":
     unittest.main()
