@@ -135,9 +135,12 @@ def main() -> None:
     # audit_signals/audit_run_at) before apply_lead_update ever references
     # them -- reverify.py can run against a leads.db that hasn't had
     # discovery_agent.py's own init_db() called on it recently (or ever),
-    # since the two agents write to the same file independently. Additive,
-    # idempotent, schema-only -- safe to run unconditionally, dry-run included.
-    discovery_db.init_db(str(args.db))
+    # since the two agents write to the same file independently. Only
+    # needed on the live-write path: dry-run never calls apply_lead_update,
+    # so running this here too would silently ALTER TABLE a file the tool
+    # promises to leave untouched in dry-run mode.
+    if not args.dry_run:
+        discovery_db.init_db(str(args.db))
     log_conn = reverify_db.get_connection(str(args.log_db))
     leads_conn = sqlite3.connect(args.db)
     leads_conn.row_factory = sqlite3.Row
