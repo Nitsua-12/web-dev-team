@@ -83,6 +83,8 @@ catch bugs without spending anything:
 - **No connection to `reverify`** — if a lead's qualification status
   changes after an outcome was recorded, nothing reconciles the two.
   Unlikely to matter in practice (an outcome typically means the lead
-  is no longer being actively re-verified) but not enforced.
+  is no longer being actively re-verified) but not enforced. Same gap
+  documented from the other side in
+  [../reverify/README.md](../reverify/README.md#known-limitations).
 - **`--business` requires an exact match**, same limitation as every
   other CLI in this project — use `--phone` if unsure of exact spelling.

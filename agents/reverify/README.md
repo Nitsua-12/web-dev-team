@@ -91,11 +91,24 @@ this exists to prevent:
   itself, or have the affected agents check a lead's current status before
   trusting their own output) once this happens often enough to be worth
   building instead of doing by hand.
-- **No connection to the scheduler or suppression list** — if a lead's
-  status flips to `disqualified_modern` after a follow-up was already
-  scheduled, the scheduler will still compute it as due (it doesn't
-  check current qualification_status, only suppression and replies).
-  Worth wiring together if this becomes a real gap in practice.
+- **No connection to the scheduler** — if a lead's status flips to
+  `disqualified_modern` after a follow-up was already scheduled, the
+  scheduler will still compute it as due (it doesn't check current
+  `qualification_status`, only suppression and replies — see
+  [../scheduler/README.md](../scheduler/README.md#known-limitations)
+  for the same gap documented from that side). Worth wiring together if
+  this becomes a real problem in practice. (Suppression itself is
+  correctly *not* part of this gap — an opt-out has to be honored
+  regardless of a lead's qualification status, so it deliberately never
+  checks it; that's by design, not a missing connection.)
+- **No connection to outcomes** — already documented, and correctly so,
+  from the other side: see
+  [../outcomes/README.md](../outcomes/README.md#known-limitations)
+  ("no connection to reverify"). If a lead's status changes after an
+  outcome was already recorded, nothing reconciles the two. Same
+  reasoning as the scheduler gap, judged lower-priority there since
+  recording an outcome usually means the lead has left the active
+  re-verification pool anyway.
 - **Google Places API cost applies per check** — same billing tier as
   Discovery's original lookups (this reuses the same field). Running
   `--min-days-since-check 0` across a large lead volume repeatedly would
