@@ -64,6 +64,30 @@ For each place returned by Places Text Search:
   a challenge/error page, not its real content -- scoring that page would
   judge a real, working business site off text it never actually wrote.
 
+## This status isn't permanent
+
+Everything above describes what happens at discovery time, from a single
+snapshot fetch. It's not re-checked automatically after that. A site can
+get fixed, start blocking automated requests, or go down entirely weeks
+later, and this agent has no way of noticing on its own -- a `search_cell`
+marked `done` won't be re-searched by a later run (that's the resumability
+feature, §"Running" above), so a lead only gets reclassified here if its
+city gets searched again from a fresh database, not as an ongoing check.
+
+[../reverify](../reverify) is what re-checks an already-qualified lead
+against the live site and corrects `leads.db` in place -- reusing this
+exact classification logic (`site_check.py`), not a second implementation
+that could drift from it. When it changes a lead's `qualification_status`,
+it also resets that lead's audit columns (see below), since a stale audit
+is worse than no audit. Real example from this project: a lead originally
+scored `qualified_outdated` (real HTTP fetch, no HTTPS, not
+mobile-friendly) later started returning a 403 to the same kind of
+automated fetch -- reverify correctly moved it to `needs_review` rather
+than continuing to trust the original snapshot, and a manual check found
+the site had actually been rebuilt with HTTPS in the meantime (see
+[../outreach/README.md](../outreach/README.md#a-draft-can-go-stale-after-its-generated)
+for what happens to anything already drafted against the old status).
+
 ## Website audit (qualified_outdated leads only)
 
 For every lead that qualifies as `qualified_outdated`, a second pass
