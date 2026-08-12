@@ -246,17 +246,18 @@ Each agent is self-contained (own `venv`, own `.env`, own README) rather than sh
 - Compliance-aware outreach copy generation
 - Full sales-handoff dossier with honest, non-fabricated estimates
 - Manual CLI-driven, human-reviewed at every stage
+- Approval queue — [agents/approval_queue](agents/approval_queue), a real local web UI (Python stdlib `http.server`, bound to `127.0.0.1` only). Pending/Approved/Rejected tabs, full draft detail view, approve/reject with notes, reset-to-pending. Automatically excludes suppressed and already-sent leads. Verified live in a browser against all real leads — approved one, rejected another with a note, confirmed both persisted correctly and reset cleanly.
+- Website audit for `qualified_outdated` leads — real PageSpeed Insights/Core Web Vitals data plus on-page SEO and conversion-signal checks (`agents/discovery/psi_client.py`, `agents/discovery/site_audit.py`), zero-LLM, same cost-conscious pattern as the rest of Discovery.
 
 ### Production roadmap — not yet built
 
 1. **Fix or replace photo/color-matching.** Currently blocked on a Google Cloud account-side gap (Places `photos` field returns empty despite correct requests) — needs investigation in Cloud Console, not more client-side debugging.
 2. **Host the demo sites.** Static hosting (e.g., Cloudflare Pages, Netlify, S3+CloudFront) so outreach copy can link to something real instead of describing a concept in words. On-page SEO (title/meta, OG/Twitter tags, JSON-LD) is already generated for every demo; the URL-dependent pieces (canonical, `og:url`, `robots.txt`, `sitemap.xml`) are wired up and activate automatically the moment `--site-base-url` is set — see [`agents/website_demo/README.md`](agents/website_demo/README.md#on-page-seo). Hosting is the actual blocker, not missing SEO tooling.
-3. **Build the approval queue.** **Built** — [agents/approval_queue](agents/approval_queue). A real local web UI (Python stdlib `http.server`, no new dependencies, bound to `127.0.0.1` only), not n8n after all — the scope turned out small enough that a custom tool was less overhead than standing up a separate platform. Pending/Approved/Rejected tabs, full draft detail view, approve/reject with notes, reset-to-pending. Automatically excludes suppressed and already-sent leads from the queue. Verified live in a browser against all 10 real leads, not just read from code — approved one, rejected another with a note, confirmed both persisted correctly and reset cleanly.
-4. **Build sending, gated behind approval.** Email via a transactional provider; SMS only after real legal review of the TCPA exposure flagged in §13. This is the highest-stakes remaining piece and should be built last and deliberately.
-5. **Move orchestration off manual CLI for good.** `run_pipeline.py` (§6) replaced running four scripts by hand with one command — the remaining step is Temporal (or a lighter scheduler) once runs need to happen unattended or on a schedule rather than triggered by a person.
-6. **Add per-agent structured logging and basic monitoring** per §9 — the pipeline-level logging exists now; instrumentation inside each agent (not just print statements) is still open, worth doing once there's unattended volume to watch.
-7. **Move secrets to a real secrets manager**, add DB backups, per §11.
-8. **Scale Discovery beyond the pilot** with explicit per-run cost budgets, informed by real spend data from the first full 25-metro batch.
+3. **Build sending, gated behind approval.** Email via a transactional provider; SMS only after real legal review of the TCPA exposure flagged in §13. This is the highest-stakes remaining piece and should be built last and deliberately.
+4. **Move orchestration off manual CLI for good.** `run_pipeline.py` (§6) replaced running four scripts by hand with one command — the remaining step is Temporal (or a lighter scheduler) once runs need to happen unattended or on a schedule rather than triggered by a person.
+5. **Add per-agent structured logging and basic monitoring** per §9 — the pipeline-level logging exists now; instrumentation inside each agent (not just print statements) is still open, worth doing once there's unattended volume to watch.
+6. **Move secrets to a real secrets manager**, add DB backups, per §11.
+7. **Scale Discovery beyond the pilot** with explicit per-run cost budgets, informed by real spend data from the first full 25-metro batch.
 
 ## 17. Known bottlenecks and solutions
 
@@ -289,7 +290,7 @@ The original brief described an "AI team." Here's every role that implies, what'
 | Website Demo Generation | **Built**, with one parked sub-feature (photo/color personalization — §16, §13). |
 | Outreach Copywriting | **Built.** Drafts only — no send capability exists. |
 | Sales Handoff Dossier ("Human Sales Step") | **Built.** Lead history, research, talking points, budget/likelihood estimates. |
-| Review-and-approval step | **Not built as tooling.** The brief explicitly required this; today "review" means a human opening a markdown file by hand — there's no queue, no approve/reject action, no record of what's been approved. This is the clearest gap against what was originally asked for. |
+| Review-and-approval step | **Built** — [agents/approval_queue](agents/approval_queue). The brief explicitly required this; a local web UI now provides the queue, approve/reject action, and record of what's been approved, verified live against real leads (§16). |
 | Sending | **Not built, deliberately deferred.** No email/SMS integration exists anywhere in the code. |
 | System architecture / documentation | **Built** — this document. |
 
