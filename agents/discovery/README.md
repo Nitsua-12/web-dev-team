@@ -58,8 +58,11 @@ For each place returned by Places Text Search:
   page-builder splash markers, legacy tech markers (`<marquee>`,
   Flash `<object>` embeds, "best viewed in Internet Explorer"). Score
   >= 2 -> `qualified_outdated`, otherwise -> `disqualified_modern`.
-- **Fetch blocked by robots.txt or failed** -> `needs_review` (don't
-  guess; a human or a later pass should look at these).
+- **Fetch blocked by robots.txt, transport failure, or a non-2xx response
+  (403 bot-block, 404, 500, etc.)** -> `needs_review` (don't guess; a
+  human or a later pass should look at these). A bot-blocked site returns
+  a challenge/error page, not its real content -- scoring that page would
+  judge a real, working business site off text it never actually wrote.
 
 ## Website audit (qualified_outdated leads only)
 

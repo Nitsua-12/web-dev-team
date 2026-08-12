@@ -47,10 +47,20 @@ def check_website(url: str) -> dict:
             url, timeout=10.0, follow_redirects=True,
             headers={"User-Agent": USER_AGENT},
         )
-        html = response.text
-        final_url = str(response.url)
     except httpx.HTTPError as exc:
         return {"status": "error", "score": 0, "signals": {"fetch_error": str(exc)}}
+
+    if response.status_code >= 400:
+        # A bot-block/error page (403/404/500/etc.) is not the site's real
+        # content -- scoring it would judge the lead off a challenge page,
+        # not the actual business site. "unknown" matches how a
+        # robots.txt-disallowed fetch is already treated: not a verdict,
+        # a signal that a human should look at this one.
+        signals["fetch_error"] = f"http_{response.status_code}"
+        return {"status": "unknown", "score": 0, "signals": signals}
+
+    html = response.text
+    final_url = str(response.url)
 
     score = 0
 
