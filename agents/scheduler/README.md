@@ -50,6 +50,12 @@ skipped from `due`/`upcoming` if:
   schedule from.
 - **All follow-ups already sent** — nothing left to schedule.
 
+That's the complete list — notably, **a lead's current `qualification_status`
+is not one of these checks.** If [reverify](../reverify) moves a lead to
+`needs_review` or `disqualified_modern` after a follow-up was already
+scheduled, this tool has no idea and will still compute it as due. See
+Known Limitations below.
+
 ## Verified against real leads, all four branches
 
 Not just the happy path — tested the scenario that actually matters,
@@ -68,6 +74,15 @@ removed after verification.
 
 ## Known limitations
 
+- **No connection to reverify.** `due`/`upcoming` only check suppression
+  and reply state (above) — never `qualification_status`. A lead that
+  [reverify](../reverify) has since flagged `needs_review` or corrected to
+  `disqualified_modern` still shows up as due for its next follow-up here,
+  exactly as if nothing changed. Already flagged from the other side in
+  [../reverify/README.md](../reverify/README.md#known-limitations); worth
+  wiring together (checking current `qualification_status` here, the same
+  way suppression and replies are already checked) if this becomes a real
+  problem rather than a theoretical one.
 - **Doesn't send anything.** This computes and displays what's due; a
   human still has to actually send it and then run `mark-sent` for the
   next follow-up index themselves. That two-step (see it's due, go send
