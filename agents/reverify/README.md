@@ -109,6 +109,15 @@ this exists to prevent:
   reasoning as the scheduler gap, judged lower-priority there since
   recording an outcome usually means the lead has left the active
   re-verification pool anyway.
+- **Partial connection to the approval queue** — unlike scheduler and
+  outcomes, [approval_queue](../approval_queue) does surface a lead's
+  current `qualification_status` in its detail view, so it's not
+  completely blind to a status change. But its Pending list doesn't show
+  it at all, and the detail view doesn't flag or highlight it as changed
+  — a human has to already recognize `needs_review` as a problem. See
+  [../approval_queue/README.md](../approval_queue/README.md#known-limitations)
+  for the real example (Village Tattoo NYC) and why this one's worth
+  fixing specifically, since it's the exact screen meant to catch this.
 - **Google Places API cost applies per check** — same billing tier as
   Discovery's original lookups (this reuses the same field). Running
   `--min-days-since-check 0` across a large lead volume repeatedly would

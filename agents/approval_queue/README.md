@@ -27,7 +27,9 @@ terminal running while you use it; `Ctrl+C` to stop.
   way) — no reason to review something that's already been acted on.
 - **Click a lead** — full detail view: subject, complete email body,
   SMS, both follow-ups with their day offsets. Also shows whether a
-  demo site and dossier exist yet for this lead.
+  demo site and dossier exist yet for this lead, and that lead's current
+  `qualification_status` in the meta line (city/state/phone/status) — see
+  Known Limitations for what this does and doesn't protect you from.
 - **Approve / Reject**, with an optional notes field (e.g. "tone's too
   generic, needs a rewrite"). The decision and note persist.
 - **Approved / Rejected tabs** — see what's already been decided, with
@@ -60,6 +62,23 @@ before the thing it gates is built, not after.
 
 ## Known limitations
 
+- **The Pending list doesn't surface a status change at all; the detail
+  view shows it but doesn't flag it.** A lead [reverify](../reverify)
+  has since moved to `needs_review` or `disqualified_modern` still shows
+  up in Pending looking exactly like any other lead — the list view
+  (`get_pending_leads` in `server.py`) doesn't even fetch
+  `qualification_status`. Click into the detail view and it's there in
+  plain text in the meta line, same visual weight as the phone number —
+  nothing highlights it as changed or warns that it no longer matches
+  what the draft below it assumes. A human has to already know to look
+  and recognize `needs_review` as a red flag. Real example from this
+  project: Village Tattoo NYC's draft still says `qualified_outdated` in
+  its own header while the lead's actual current status is
+  `needs_review` — see
+  [../reverify/README.md](../reverify/README.md#known-limitations) and
+  [../outreach/README.md](../outreach/README.md#a-draft-can-go-stale-after-its-generated)
+  for the full story. Worth fixing here specifically, since this is the
+  exact screen meant to catch this before something gets approved.
 - **Single-writer, no auth.** Fine for a local single-user tool; would
   need real access control before ever being anything else.
 - **No connection to the scheduler yet.** Approving a lead's initial
