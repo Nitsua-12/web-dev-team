@@ -14,6 +14,17 @@ has no artist pages, no style pages, and no real portfolio content —
 technical SEO is necessary, not sufficient, for a visual,
 personality-driven business like a tattoo shop.
 
+**This checklist is about the site we build.** A separate, earlier step —
+[`agents/discovery/site_audit.py`](agents/discovery/site_audit.py) —
+already diagnoses the lead's *current* site before they're even a
+client: real PageSpeed Insights/Core Web Vitals data plus on-page SEO and
+conversion checks (missing title/meta, no schema, no phone number
+visible, no CTA, etc.), stored per lead in `leads.db`'s `audit_signals`
+column for any `qualified_outdated` lead. That's diagnostic input, not
+duplicate work — Phase 2 below should start from what the audit actually
+found broken, not treat this checklist as a generic substitute for
+closing the loop on it.
+
 ## Phase 1 — Automated demo website (done, zero client input required)
 
 Every lead's generated demo already ships with:
@@ -48,6 +59,17 @@ The page structure is built (`onboarding_templates/artist-page.html`,
 `template/artists/` and `template/styles/` on the real site); it needs
 real content from the client before it's honest to publish. Run this
 intake once a lead signs.
+
+### Before the content intake
+
+- [ ] Pull this lead's `audit_signals` from `leads.db` (if it has one —
+      only `qualified_outdated` leads get audited) and check off what the
+      real site build actually fixes: was Core Web Vitals/performance
+      genuinely addressed by the new template, is there now a real
+      `LocalBusiness` schema block, a visible phone number, a real CTA?
+      The point of selling against a diagnosed problem is closing the
+      loop on that exact problem, not just shipping a generically good
+      site and hoping it happens to cover the same ground.
 
 ### Content intake — ask the client for:
 
