@@ -48,6 +48,33 @@ like") rather than linking to something that doesn't resolve yet. Once
 demos are actually hosted somewhere, this agent should be updated to
 reference a real `{{DEMO_LINK}}` token.
 
+## A draft can go stale after it's generated
+
+`generate_drafts.py` only ever processes leads with `qualification_status`
+`qualified_no_website` or `qualified_outdated` — a lead that
+[reverify](../reverify) has since moved to `needs_review` or
+`disqualified_modern` (site got fixed, or turned out to be inaccessible to
+automated checks) is automatically excluded from any future run. That part
+is enforced by the code, not just a convention.
+
+What isn't automated: an **existing** `draft.md`, generated before the
+status changed, doesn't know anything happened. Reverify corrects
+`leads.db`; it has no mechanism to reach into `drafts/` and update or flag
+a file that already exists. If a lead's status changes after its draft was
+already written, that draft keeps sitting there looking exactly as
+confident and ready-to-send as it did before — nothing in this pipeline
+currently stops a human from sending it anyway.
+
+Until something more automated exists, the practice is a manual flag: a
+`> **DO NOT SEND — LEAD STATUS CHANGED (date).**` blockquote inserted right
+after the draft's `**Qualification:**` line, explaining what changed and
+pointing to the full story in that lead's dossier. See
+`drafts/village-tattoo-nyc-new-york/draft.md` for a real example — that
+lead's site started returning a bot-block to the automated checker, turned
+out on manual inspection to be a real, currently-live, HTTPS site (not the
+outdated one the draft was written against), and got flagged this way
+rather than silently left to look current.
+
 ## Legal considerations — read before this goes anywhere near a real send
 
 This agent drafts compliant-*shaped* copy (honest subject lines, no false
