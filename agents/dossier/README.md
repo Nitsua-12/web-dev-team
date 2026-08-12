@@ -55,6 +55,38 @@ before rendering to markdown.
   confidence is low rather than pick an arbitrary answer. Treat these as
   a starting point for a salesperson's own judgment, not a prediction.
 
+## A dossier can go stale after it's generated
+
+Same gap as outreach's drafts, and for the same underlying reason:
+`generate_dossier.py` only ever runs for `qualified_no_website`/
+`qualified_outdated` leads (`QUALIFYING_STATUSES` in the code), so it
+won't generate a *new* dossier for one [reverify](../reverify) has since
+moved to `needs_review` or `disqualified_modern` -- confirmed directly,
+not assumed: `generate_dossier.py --business "..." --force` against a
+lead in that state refuses outright with "no longer qualified," before
+spending a single token.
+
+What it won't do is reach back and fix an **existing** dossier. And
+unlike the demo (whose content stays neutral), a dossier is exactly like
+a draft here -- it makes real claims that go stale: the `Qualification`
+line in Lead History, and Talking Points built directly around the
+qualification reason (e.g. "frame the outdated site as a missed
+opportunity"). Once the underlying fact changes, those sections are
+actively wrong, not just outdated.
+
+Same manual-flag practice as the draft: a clearly marked section
+inserted right after the "for internal use" line, explaining what
+changed. See `dossiers/village-tattoo-nyc-new-york/dossier.md` for a
+real example -- that lead's site started returning a bot-block to the
+automated checker, turned out on manual inspection to be a real,
+currently-live, HTTPS site (not the outdated one the dossier's talking
+points were built around), and got two stacked flags: one from reverify
+catching the status change, one from the manual browser check that
+found what was actually going on. See
+[../outreach/README.md](../outreach/README.md#a-draft-can-go-stale-after-its-generated)
+and [../reverify/README.md](../reverify/README.md#known-limitations) for
+the same story from the other sides.
+
 ## Cost note
 
 Same model as the outreach agent (`claude-sonnet-5`, intro pricing through
@@ -76,4 +108,7 @@ against a large batch.
 - No dossier update mechanism — if the outreach or demo agents run again
   after a dossier was generated (e.g. a draft gets sent, a demo gets
   rebuilt), the dossier doesn't know and needs `--force` regeneration to
-  reflect it.
+  reflect it. Related but distinct from "A dossier can go stale after
+  it's generated" above — this one's about *other agents* producing new
+  output the dossier hasn't seen; that one's about *the lead itself*
+  changing status.
