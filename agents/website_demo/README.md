@@ -129,6 +129,23 @@ itself.
 1. **Human review each one** before it's referenced in outreach.
 2. **Be precise in the outreach message** about what this is -- a concept
    built to show what's possible, not a live production site.
+3. **Check the lead is still actually qualified.** Same gap as the other
+   pipeline stages: `generate_demo.py` only ever runs for
+   `qualified_no_website`/`qualified_outdated` leads, so it won't build a
+   *new* demo for one [reverify](../reverify) has since moved to
+   `needs_review` or `disqualified_modern` -- but an **existing** demo,
+   already sitting in `output/<slug>/`, doesn't know when that happens.
+   Unlike the outreach draft and dossier, the demo's own content (name,
+   address, phone, generic template copy) doesn't make any claim that
+   goes false when a lead's status changes -- it never says "your current
+   site is outdated," that pitch only lives in the outreach copy. So the
+   demo file itself doesn't need the same in-file flag. What *is* worth
+   checking: whether a demo existing at all for a lead is still a
+   meaningful signal before referencing it — see
+   [../outreach/README.md](../outreach/README.md#a-draft-can-go-stale-after-its-generated),
+   [../reverify/README.md](../reverify/README.md#known-limitations), and
+   [../approval_queue/README.md](../approval_queue/README.md#known-limitations)
+   for the full picture (real example: Village Tattoo NYC).
 
 ## Known limitations
 

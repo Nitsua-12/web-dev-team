@@ -118,6 +118,14 @@ this exists to prevent:
   [../approval_queue/README.md](../approval_queue/README.md#known-limitations)
   for the real example (Village Tattoo NYC) and why this one's worth
   fixing specifically, since it's the exact screen meant to catch this.
+- **Website Demo Generation has the same generate-vs-existing split as
+  outreach** — [website_demo](../website_demo) won't build a *new* demo
+  for a lead this agent has since disqualified, but an existing one in
+  `output/<slug>/` isn't touched. Lower-severity than the draft/dossier
+  case, though: the demo's own content never claims the lead's *current*
+  site is bad, so there's no in-file fact that goes stale — see
+  [../website_demo/README.md](../website_demo/README.md#before-this-goes-anywhere-near-a-lead)
+  for the full reasoning.
 - **Google Places API cost applies per check** — same billing tier as
   Discovery's original lookups (this reuses the same field). Running
   `--min-days-since-check 0` across a large lead volume repeatedly would
