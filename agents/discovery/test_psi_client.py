@@ -71,7 +71,7 @@ class RunPagespeedTests(unittest.TestCase):
         result = psi_client.run_pagespeed("https://example.com", "fake-key", client=client)
         self.assertEqual(result, {"lighthouseResult": {}})
 
-    @patch("psi_client.time.sleep")
+    @patch("http_retry.time.sleep")
     def test_retries_on_429_then_succeeds(self, _mock_sleep):
         calls = {"count": 0}
 
@@ -86,7 +86,7 @@ class RunPagespeedTests(unittest.TestCase):
         self.assertEqual(result, {"ok": True})
         self.assertEqual(calls["count"], 3)
 
-    @patch("psi_client.time.sleep")
+    @patch("http_retry.time.sleep")
     def test_raises_after_exhausting_retries(self, _mock_sleep):
         def handler(request):
             return httpx.Response(500, text="server error")

@@ -2,13 +2,13 @@
 
 Free, quota-limited (not billed) -- see
 https://developers.google.com/speed/docs/insights/v5/get-started.
-Mirrors the retry/backoff pattern already used in places_client.py so
-there's one retry implementation style across Discovery's API clients.
+Retry/backoff and JSON-parsing safety are shared with places_client.py
+via http_retry.py, not reimplemented here.
 """
 
-import time
-
 import httpx
+
+import http_retry
 
 PSI_URL = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
 
@@ -62,23 +62,10 @@ def run_pagespeed(url: str, api_key: str, max_retries: int = 3, client: httpx.Cl
     owns_client = client is None
     client = client or httpx.Client(timeout=30.0)
     try:
-        last_error = None
-        for attempt in range(max_retries):
-            try:
-                response = client.get(PSI_URL, params=params)
-            except httpx.HTTPError as exc:
-                raise PsiApiError(f"PSI API request failed: {exc}") from exc
-            if response.status_code == 200:
-                try:
-                    return response.json()
-                except ValueError as exc:
-                    raise PsiApiError(f"PSI API returned invalid JSON: {exc}") from exc
-            if response.status_code in (429, 500, 502, 503):
-                last_error = f"{response.status_code}: {response.text}"
-                time.sleep(2 ** attempt)
-                continue
-            raise PsiApiError(f"PSI API error {response.status_code}: {response.text}")
-        raise PsiApiError(f"PSI API failed after {max_retries} retries: {last_error}")
+        response = http_retry.request_with_retry(
+            lambda: client.get(PSI_URL, params=params), PsiApiError, "PSI API", max_retries=max_retries,
+        )
+        return http_retry.parse_json_response(response, PsiApiError, "PSI API")
     finally:
         if owns_client:
             client.close()

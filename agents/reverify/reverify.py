@@ -34,6 +34,17 @@ from dotenv import load_dotenv
 
 
 def _load_module(name: str, path: Path):
+    # A module loaded this way (by file path, not as a package) doesn't
+    # automatically get its own directory on sys.path -- so if it imports
+    # a sibling module in the same directory (e.g. places_client.py
+    # importing http_retry.py), that import fails unless the directory
+    # is already there. Discovery's modules are only ever run normally
+    # from within their own directory (where this isn't an issue) or
+    # loaded this way from reverify -- so this is the one place that
+    # needs the fix.
+    module_dir = str(path.parent)
+    if module_dir not in sys.path:
+        sys.path.insert(0, module_dir)
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
