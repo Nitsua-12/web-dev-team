@@ -8,7 +8,9 @@ Finds tattoo shops with no website or an outdated one, builds them a personalize
 
 ## 2. Overall architecture
 
-Four independent agents, each a standalone Python script with its own dependencies (`venv`), API key, and README. They communicate through **shared state on disk**, not through direct agent-to-agent calls: one shared SQLite database (`leads.db`) plus each agent's own output folder, which downstream agents read from.
+Ten independent agents — nine standalone Python scripts plus Approval Queue, a small local web server — each with its own dependencies (`venv`), API key where needed, and README. They communicate through **shared state on disk**, not through direct agent-to-agent calls: one shared SQLite database (`leads.db`) plus each agent's own output folder or database, which other agents read from or correct.
+
+Four agents form the core linear pipeline, gated by a fifth (Approval Queue) before a human takes over:
 
 ```mermaid
 flowchart TD
@@ -25,6 +27,19 @@ flowchart TD
 
 This is a **linear batch pipeline with human gates**, not a conversational multi-agent system — that shape falls directly out of the task: each stage has a clear input (structured data) and output (structured data + files), stages don't need to negotiate or loop with each other, and a human is supposed to stop the flow before anything goes out. See §11 for why that matters for framework choice.
 
+The other five agents — Suppression, Reply Triage, Scheduler, Reverify, Outcomes — aren't part of this linear flow. None were in the original brief; each was found necessary while building the rest (§19 has the full story on each). They operate on the same shared state independently rather than sitting in the pipeline:
+
+```mermaid
+flowchart LR
+    G[Suppression<br/>opt-out list] -.->|gates drafting| C2[Outreach Copywriting]
+    H[Reverify<br/>rechecks leads.db] -.->|corrects| DB2[(leads.db)]
+    I[Reply Triage<br/>human-run per reply] -.->|opt-outs to| G
+    I -.->|flags into| D2[Sales Handoff Dossier]
+    J[Scheduler<br/>follow-up timing] -.->|reads| C2
+    J -.->|checks| G
+    K[Outcomes<br/>deal results] -.->|feeds estimates back to| D2
+```
+
 ## 3. Agent-by-agent breakdown
 
 | Agent | Does | LLM | Data in | Data out |
@@ -33,8 +48,14 @@ This is a **linear batch pipeline with human gates**, not a conversational multi
 | [Website Demo Generation](agents/website_demo) | Builds a personalized concept site per qualified lead, with on-page SEO (title/meta, OG/Twitter tags, `LocalBusiness` JSON-LD, and — once hosted — canonical URL, `robots.txt`, `sitemap.xml`) | None — token templating, no generative text | `leads.db` | `output/<slug>/` (static HTML/CSS/JS) |
 | [Outreach Copywriting](agents/outreach) | Drafts email, SMS, and 2 follow-ups per lead | Claude Sonnet 5, structured outputs | `leads.db` | `drafts/<slug>/draft.md` + `draft.json` |
 | [Sales Handoff Dossier](agents/dossier) | Compiles lead history + research + status + talking points + estimates | Claude Sonnet 5 + web_search tool, structured outputs | `leads.db`, demo output, draft output, real funnel data if any exists | `dossiers/<slug>/dossier.md` |
+| [Approval Queue](agents/approval_queue) | Local web UI to review/approve/reject drafts before a human takes over sending | None | Draft + dossier files | `approvals.db` |
+| [Suppression](agents/suppression) | Opt-out list; Outreach checks before drafting (and before spending the LLM call) | None | Manual opt-out entries | `suppression.db`, independent of `leads.db` |
+| [Reply Triage](agents/reply_triage) | Classifies a lead's reply (opt_out/interested/not_interested/question/unclear), auto-suppresses opt-outs, flags the rest into the dossier | Claude Sonnet 5 | A reply a human pastes in after seeing it live | `replies.db`; opt-outs to `suppression.db`; flagged entries into `dossiers/<slug>/dossier.md` |
+| [Scheduler](agents/scheduler) | Tracks follow-up timing per lead; stops for any lead that's suppressed or has a logged reply | None | `drafts/<slug>/draft.json`, suppression + reply state | `sends.db` (due/upcoming/mark-sent) |
+| [Reverify](agents/reverify) | Re-checks a lead's real-world status against Discovery's own logic; corrects `leads.db` in place and resets stale audit data on a status change | None | `leads.db`, reused Places client + `site_check` heuristic | `leads.db` (corrected in place), `reverify_log.db` |
+| [Outcomes](agents/outcomes) | Records final deal results; feeds a funnel back into Dossier's likelihood/budget estimates once real data exists | None | Manual `record` entries | `outcomes.db` |
 
-Notably, two of the four agents use **no LLM at all** — Discovery and Website Demo Generation are deterministic API/template work. This was a deliberate cost and reliability choice, not an oversight: neither task benefits from generative text, and both are cheaper and more predictable without it.
+Notably, several agents use **no LLM at all** — Discovery, Website Demo Generation, Suppression, Scheduler, Reverify, and Outcomes are deterministic API/template/rule-based work. This was a deliberate cost and reliability choice, not an oversight: none of these tasks benefit from generative text, and all are cheaper and more predictable without it.
 
 ## 4. Agent communication
 
@@ -84,15 +105,26 @@ The original ask named LangGraph, CrewAI, OpenAI Agents SDK, MCP, Temporal, and 
 
 **Recommendation for scale:** introduce a job queue (e.g., Python `rq` + Redis, or a cloud-native queue like SQS) when either (a) Discovery's search-cell count grows enough that sequential API calls become the bottleneck, or (b) you want multiple agents' work to run concurrently rather than as separate manual invocations. Discovery's `search_cells` table already gives you a natural queue-like unit of work (one row per pending search) — a real queue would consume from that table rather than replace it.
 
-## 8. Error recovery
+## 8. Error recovery and testing
 
 **What exists today:**
 
-- Discovery: retry with exponential backoff on Places API 429/5xx (`places_client.py`), resumable batch state via `search_cells` (interrupted runs pick up where they left off), graceful degradation on individual website-check failures (marked `needs_review`, doesn't crash the batch)
+- Discovery: retry with exponential backoff on Places API 429/5xx (`places_client.py`, via the shared `http_retry.py` helper — also used by `psi_client.py`, so both of Discovery's API clients get the same transport-failure and malformed-JSON handling from one implementation, not two that could drift), resumable batch state via `search_cells` (interrupted runs pick up where they left off), graceful degradation on individual website-check failures (marked `needs_review`, doesn't crash the batch)
 - Website Demo Generation: idempotent by default (existing demos skipped unless `--force`), so a partial run is safe to just re-run
 - Outreach / Dossier: same idempotent-skip pattern
 
 **Gaps, honestly:** no dead-letter handling for permanently-failing leads (they just stay `error` status with no alerting), no cross-agent failure propagation (if Discovery partially fails, downstream agents don't know), no automatic retry orchestration tying the whole pipeline together — a human currently notices failures by reading terminal output.
+
+### Automated testing
+
+**Current:** zero automated tests existed anywhere in this project until they were added for `agents/discovery` and `agents/reverify` — verification before that was entirely manual (`--dry-run` flags, reading real output, spot-checking against real leads). That's not the wrong approach for a solo pilot, but it doesn't scale to safely changing code without re-verifying by hand every time.
+
+- `agents/discovery`: 80 tests — pure-function parsers (on-page SEO/conversion signal extraction, PSI response parsing), `httpx.MockTransport`-based tests for every API client covering success, retry/backoff, transport failure, malformed JSON, and non-retryable status codes, and a schema-migration test verified against a real copy of `leads.db` (not just a synthetic fixture) before being trusted against the actual file.
+- `agents/reverify`: 4 tests — the audit-column-reset logic, including the case where `leads.db` hasn't had Discovery's own migration run against it yet.
+
+All using Python's built-in `unittest` — zero new dependency, matching the project's minimal-dependency pattern.
+
+**Not yet covered:** `website_demo`, `outreach`, `dossier`, `suppression`, `reply_triage`, `scheduler`, `outcomes`, and `approval_queue` still rely entirely on the original manual-verification convention. Not because it's wrong, but because it predates the shift to automated tests and hasn't been revisited — worth doing incrementally, the same way `discovery`'s coverage was built up one real bug at a time rather than as an upfront test-everything pass.
 
 ## 9. Logging and monitoring
 
@@ -163,6 +195,7 @@ This section reflects real decisions made and reversed during this project, not 
 | Research synthesis | Claude Sonnet 5 + web_search tool | Same reasoning; web_search is Anthropic's server-side, ToS-compliant search, not scraping |
 | Website generation | None (template + token substitution) | No generative task exists here — personalization is data substitution, not writing |
 | Photo/color data | Google Places Photos API (**currently broken** — see §16) | The only ToS-compliant way to access a business's real photos; general scraping was explicitly ruled out |
+| Website audit (`qualified_outdated` leads) | Google PageSpeed Insights v5 / CrUX | Free, quota-limited (not billed) — real Core Web Vitals and performance data, no viable cheaper alternative that isn't scraping |
 
 **Not yet needed:** a dedicated email-sending API (e.g., Postmark, SES), an SMS API (e.g., Twilio) — both are correctly out of scope until the approval/send workflow exists (§16).
 
@@ -266,7 +299,7 @@ Each agent is self-contained (own `venv`, own `.env`, own README) rather than sh
 | Sequential API calls in every agent | Slower runs at volume; not yet a real problem at pilot scale | Add concurrency (asyncio/thread pool with rate limiting) |
 | SQLite single-writer model | Fine today (one writer at a time); blocks concurrent orchestration | Migrate to Postgres when concurrent writers are actually needed |
 | No queue | Every agent run is a manual, blocking CLI invocation | Introduce a job queue once agents need to run unattended (§7) |
-| Manual human review via raw markdown files | Doesn't scale past a handful of leads a human can read by hand | Build the approval-queue UI (§16, item 3) |
+| ~~Manual human review via raw markdown files~~ | **Resolved** — [agents/approval_queue](agents/approval_queue) (§16) replaced this with a real queue UI | — |
 | Google Places API cost at national scale | A full US sweep is a real, non-trivial cost (~$1,200–1,500 estimated in an earlier session, unverified against a completed full run) | Phased rollout already in place (pilot metros first); add explicit budget caps per run |
 | Photo/color-matching feature broken | Currently defaults to template colors for every lead | Needs Google Cloud Console investigation, not more code |
 
@@ -277,6 +310,8 @@ Each agent is self-contained (own `venv`, own `.env`, own README) rather than sh
 - Real photo personalization (colors today; possibly real photos later) once the Places Photos issue is resolved and, separately, once there's a clear legal answer on using a business's own public photos in a pitch built for them
 - A feedback loop from actual outreach outcomes (opened, replied, closed) back into the Dossier agent's likelihood-of-closing estimates, which today have no historical data to calibrate against
 - Dedupe leads across overlapping city search-radius boundaries beyond exact `place_id` match (documented as a known gap in Discovery's README since day one)
+- Feed the website audit's `audit_signals` (§16) into Dossier's prompt so its generated talking points cite the actual findings (real Core Web Vitals, missing schema, no phone number, etc.) instead of a generic "your site looks outdated" claim — the audit produces the data today, but nothing downstream reads it yet
+- Extend automated test coverage (§8) to the agents that still rely entirely on manual verification
 
 ## 19. Team roles: status and gaps
 
