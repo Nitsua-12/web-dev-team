@@ -40,8 +40,14 @@ currently says. If they differ, `leads.db` is updated in place —
 the same fields every other agent reads. If a lead goes from
 `qualified_outdated` to `disqualified_modern`, for example, it stops
 showing up as an active lead for Outreach, Website Demo, or the Dossier
-agent on their next run — automatically, correctly, without a stale demo
-or draft sitting around pitching a problem that's already solved.
+agent on their *next* run — automatically, correctly, no new stale demo
+or draft gets generated for a problem that's already solved.
+
+That's the forward-looking half. It does **not** reach back and touch
+anything already generated — an `output/`, `drafts/`, or `dossiers/` file
+written before the status changed keeps existing exactly as it was,
+looking just as current as it did the day it was made. See "Known
+limitations" below.
 
 Any qualification-status change also resets the website-audit columns
 (`audit_status`, `audit_score`, `audit_signals`, `audit_run_at`, added by
@@ -73,6 +79,18 @@ this exists to prevent:
 
 ## Known limitations
 
+- **Doesn't touch anything already generated.** Correcting `leads.db`
+  doesn't reach into `output/`, `drafts/`, or `dossiers/` — a demo, draft,
+  or dossier written before a status change keeps sitting there looking
+  current. Today that's a manual flag (a blockquote inserted near the top
+  of the affected file) — see
+  [../outreach/README.md](../outreach/README.md#a-draft-can-go-stale-after-its-generated)
+  and [../discovery/README.md](../discovery/README.md#this-status-isnt-permanent)
+  for the real example this happened to (Village Tattoo NYC) and what the
+  flag actually looks like. Worth automating (have reverify write the flag
+  itself, or have the affected agents check a lead's current status before
+  trusting their own output) once this happens often enough to be worth
+  building instead of doing by hand.
 - **No connection to the scheduler or suppression list** — if a lead's
   status flips to `disqualified_modern` after a follow-up was already
   scheduled, the scheduler will still compute it as due (it doesn't
