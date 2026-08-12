@@ -51,7 +51,7 @@ Valid `--reason` values: `unsubscribe`, `stop_reply`, `manual`, `bounce`,
 emails are lowercased and trimmed — so `check`/`add`/`remove` all match
 regardless of how the number or address was originally formatted.
 
-## Current integration
+## Current integrations
 
 **[Outreach Copywriting](../outreach)** checks this list before drafting
 anything for a lead. If a lead's phone is suppressed, no draft is written
@@ -59,6 +59,12 @@ and — just as importantly — no Anthropic API call is made for that lead
 either. Verified against a real lead: added a test suppression, confirmed
 the agent skipped drafting for that lead with a clear log line, then
 removed the test entry.
+
+**[Reply Triage](../reply_triage)** writes to this list, in the other
+direction — the moment it classifies a lead's reply as `opt_out`, it adds
+that lead's phone here automatically, no separate step. Verified against
+a real lead's opt-out reply: correctly added with the right reason and
+source, confirmed by reading `suppression.db` afterward.
 
 ## The integration that actually matters (not yet built)
 
@@ -72,10 +78,14 @@ afterthought.
 
 ## Known limitations
 
-- No automated way to detect a "STOP" SMS reply or an email unsubscribe
-  click and add it here automatically — that requires the reply-triage
-  role described in ARCHITECTURE.md §19, which also doesn't exist yet.
-  Until then, every entry here is added by a human, by hand.
+- **Not every entry requires a human to type the `add` command by hand
+  anymore** — [reply_triage](../reply_triage) is built and automatically
+  adds a lead's phone here the moment it classifies a reply as `opt_out`.
+  What's still missing is upstream of that: no live inbox/SMS connection
+  exists (sending doesn't exist yet — see suppression's own note below),
+  so a human still has to personally see the "STOP" reply and run
+  `triage_cli.py` on it before this list updates. The gap is "notice the
+  reply happened," not "add it to this list once noticed."
 - Phone-only in practice, per the scope note above — the `email` contact
   type is schema-ready but has nothing feeding it yet.
 - No audit trail beyond `added_at`/`source`/`notes` on each row — fine at
