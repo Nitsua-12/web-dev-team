@@ -8,7 +8,10 @@ Usage:
     python discovery_agent.py --dry-run                 # no API calls, fake data
 
 Requires GOOGLE_PLACES_API_KEY in a .env file (see .env.example) unless
---dry-run is passed.
+--dry-run is passed. PSI_API_KEY is also read, for the website-audit step
+on qualified_outdated leads (see site_audit.py) -- not required to run
+this script at all, just to get real Core Web Vitals data instead of a
+per-lead "audit: error" line.
 """
 
 import argparse

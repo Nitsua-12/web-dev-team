@@ -2,8 +2,10 @@
 standard library -- this only touches a local SQLite file.
 
 Real opt-outs mostly arrive as a human hearing "stop calling/texting me" on
-the phone, or reading a reply -- there's no automated trigger for those yet,
-so `add` exists for a human to record them directly.
+the phone (no trigger for that but a human typing it here), or a reply-based
+opt-out, which ../reply_triage now adds automatically the moment it
+classifies a reply as opt_out -- `add` here is for the phone-call case and
+manual corrections, not the only path into this list anymore.
 
 Usage:
     python suppression_cli.py add --phone "(212) 555-0100" --reason manual --source phone_call --notes "asked us to stop during a call"
