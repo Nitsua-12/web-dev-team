@@ -43,6 +43,18 @@ showing up as an active lead for Outreach, Website Demo, or the Dossier
 agent on their next run — automatically, correctly, without a stale demo
 or draft sitting around pitching a problem that's already solved.
 
+Any qualification-status change also resets the website-audit columns
+(`audit_status`, `audit_score`, `audit_signals`, `audit_run_at`, added by
+`agents/discovery/site_audit.py`) back to their unset defaults. A prior
+audit reflects the lead's state at the time it ran — once reverify has
+detected the underlying site actually changed, that audit is no longer
+accurate and shouldn't sit around as if it were current evidence in an
+Outreach or Dossier prompt. `main()` also ensures `leads.db` has these
+columns at all (calling Discovery's own migration) before touching
+anything, since reverify can run against a copy of `leads.db` that hasn't
+had `discovery_agent.py` run against it recently — the two agents write to
+the same file independently.
+
 ## Verified against real leads, including the case that actually matters
 
 Not just "it runs without erroring" — tested the actual failure mode

@@ -43,6 +43,7 @@ def _load_module(name: str, path: Path):
 ROOT = Path(__file__).parent.parent
 places_client = _load_module("discovery_places_client_module", ROOT / "discovery" / "places_client.py")
 site_check = _load_module("discovery_site_check_module", ROOT / "discovery" / "site_check.py")
+discovery_db = _load_module("discovery_db_module", ROOT / "discovery" / "db.py")
 reverify_db = _load_module("reverify_db_module", Path(__file__).parent / "db.py")
 
 DEFAULT_LEADS_DB = ROOT / "discovery" / "leads.db"
@@ -66,6 +67,30 @@ def classify_website(url: str | None) -> tuple[str, str]:
     if status == "modern":
         return status, "disqualified_modern"
     return status, "needs_review"  # unknown (robots-blocked) or error
+
+
+def apply_lead_update(
+    leads_conn: sqlite3.Connection,
+    google_place_id: str,
+    new_url: str | None,
+    new_website_status: str,
+    new_qualification: str,
+) -> None:
+    """Writes a re-verified lead's new status to leads.db. Also resets the
+    website-audit columns (audit_status/audit_score/audit_signals/audit_run_at,
+    added by agents/discovery/site_audit.py) -- a qualification_status change
+    means any prior audit no longer reflects this lead's current state, and
+    would otherwise sit as stale evidence in Outreach/Dossier prompts."""
+    leads_conn.execute(
+        """
+        UPDATE leads
+        SET website_url = ?, has_website = ?, website_status = ?, qualification_status = ?,
+            audit_status = 'not_run', audit_score = NULL, audit_signals = NULL, audit_run_at = NULL
+        WHERE google_place_id = ?
+        """,
+        (new_url, int(bool(new_url)), new_website_status, new_qualification, google_place_id),
+    )
+    leads_conn.commit()
 
 
 def fetch_active_leads(leads_db: Path, log_db: Path, min_days_since_check: int, limit: int | None) -> list[sqlite3.Row]:
@@ -106,6 +131,13 @@ def main() -> None:
         raise SystemExit("GOOGLE_PLACES_API_KEY not set -- add it to .env")
 
     reverify_db.init_db(str(args.log_db))
+    # Ensures leads.db has the website-audit columns (audit_status/audit_score/
+    # audit_signals/audit_run_at) before apply_lead_update ever references
+    # them -- reverify.py can run against a leads.db that hasn't had
+    # discovery_agent.py's own init_db() called on it recently (or ever),
+    # since the two agents write to the same file independently. Additive,
+    # idempotent, schema-only -- safe to run unconditionally, dry-run included.
+    discovery_db.init_db(str(args.db))
     log_conn = reverify_db.get_connection(str(args.log_db))
     leads_conn = sqlite3.connect(args.db)
     leads_conn.row_factory = sqlite3.Row
@@ -136,11 +168,7 @@ def main() -> None:
             suffix = " (dry-run, not saved)" if args.dry_run else ""
             print(f"  {lead['business_name']}: CHANGED {lead['qualification_status']} -> {new_qualification}{suffix}")
             if not args.dry_run:
-                leads_conn.execute(
-                    "UPDATE leads SET website_url = ?, has_website = ?, website_status = ?, qualification_status = ? WHERE google_place_id = ?",
-                    (new_url, int(bool(new_url)), new_website_status, new_qualification, lead["google_place_id"]),
-                )
-                leads_conn.commit()
+                apply_lead_update(leads_conn, lead["google_place_id"], new_url, new_website_status, new_qualification)
         else:
             print(f"  {lead['business_name']}: no change ({lead['qualification_status']})")
 
