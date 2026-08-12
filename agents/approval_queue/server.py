@@ -77,8 +77,17 @@ def already_sent(slug: str) -> bool:
     if not SENDS_DB.exists():
         return False
     conn = sqlite3.connect(SENDS_DB)
-    row = conn.execute("SELECT 1 FROM sends WHERE lead_slug = ? AND followup_index = 0", (slug,)).fetchone()
-    conn.close()
+    try:
+        row = conn.execute("SELECT 1 FROM sends WHERE lead_slug = ? AND followup_index = 0", (slug,)).fetchone()
+    except sqlite3.OperationalError:
+        # sends.db exists as a file but scheduler_cli.py has never actually
+        # been run yet, so its schema was never applied -- same as "no
+        # sends have happened," not an error (matches how outcomes/stats.py
+        # treats a sibling agent's not-yet-initialized database: it
+        # contributes zero, it doesn't crash the caller).
+        row = None
+    finally:
+        conn.close()
     return row is not None
 
 

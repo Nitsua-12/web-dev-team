@@ -60,13 +60,31 @@ before the thing it gates is built, not after.
   and confirmed `approvals.db` was genuinely empty afterward — no test
   data left behind.
 
+## Bug found and fixed: `already_sent()` crashed the whole queue
+
+`already_sent()` checked whether `scheduler/sends.db` **existed as a
+file**, not whether its `sends` **table** had ever actually been created.
+Since nothing has ever really been sent in this project yet,
+`scheduler_cli.py` (which applies that schema on its own first run) had
+never been run for real — so `sends.db` sat there as a real, existing,
+completely empty SQLite file. `build_queue()` calls `already_sent()` for
+every lead, so opening the Pending tab reliably crashed with
+`sqlite3.OperationalError: no such table: sends`, discovered while
+checking this agent's output for the same status-drift issue documented
+throughout this project's other READMEs. Fixed to treat a missing table
+the same as a missing file — no sends yet, not an error — matching how
+`outcomes/stats.py` already treats an uninitialized sibling database.
+Added `test_server.py` (this agent's first test file) covering the exact
+failure and four related cases, plus a live re-run of `build_queue()`
+confirming all 10 leads now load correctly.
+
 ## Known limitations
 
 - **The Pending list doesn't surface a status change at all; the detail
   view shows it but doesn't flag it.** A lead [reverify](../reverify)
   has since moved to `needs_review` or `disqualified_modern` still shows
   up in Pending looking exactly like any other lead — the list view
-  (`get_pending_leads` in `server.py`) doesn't even fetch
+  (`build_queue` in `server.py`) doesn't even fetch
   `qualification_status`. Click into the detail view and it's there in
   plain text in the meta line, same visual weight as the phone number —
   nothing highlights it as changed or warns that it no longer matches
