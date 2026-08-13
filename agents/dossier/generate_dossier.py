@@ -91,7 +91,15 @@ it's provided, factor it into your likelihood/budget reasoning -- but if \
 the sample size is small, say so explicitly and don't treat a handful of \
 data points as a reliable rate. A stated small sample is more honest and \
 more useful to the salesperson than a confident-sounding number with \
-nothing real behind it."""
+nothing real behind it.
+
+You may also be given automated site audit findings -- real checks run \
+against the shop's actual existing homepage (PageSpeed/Core Web Vitals, \
+missing schema markup, no phone number found on the page, etc.), not \
+guesses. When present, cite them concretely in your talking points instead \
+of generic phrasing like "your website looks outdated" -- a specific, \
+real finding is more credible to a salesperson on a call than a vague \
+claim."""
 
 
 WEB_SEARCH_TOOL = {
@@ -183,12 +191,64 @@ def build_funnel_context(funnel: dict) -> str:
     return "\n".join(lines)
 
 
+def format_audit_findings(lead: sqlite3.Row) -> str:
+    """Turn site_audit.py's stored findings (leads.audit_status/audit_signals)
+    into plain-language lines the prompt can cite specifically, instead of
+    the dossier having only "it's outdated" to go on. Only populated for
+    qualified_outdated leads -- see discovery_agent.py. Pure function, no
+    network or DB access.
+
+    audit_status defaults to the string 'not_run' (schema.sql), not NULL --
+    a lead that was never audited must be excluded explicitly, not just
+    falsy-checked, or a never-run audit prints stale "nothing found" text
+    as if it were a real finding."""
+    status = lead["audit_status"] if "audit_status" in lead.keys() else None
+    if status not in ("ok", "skipped", "error"):
+        return ""
+
+    signals = json.loads(lead["audit_signals"] or "{}")
+
+    if status == "skipped":
+        return f"\nSite audit could not run: {signals.get('fetch_error', 'unknown reason')}."
+
+    findings = []
+    if signals.get("performance_score") is not None:
+        findings.append(f"mobile PageSpeed performance score {signals['performance_score']}/100")
+    if signals.get("field_lcp_category"):
+        findings.append(f"real-user Largest Contentful Paint: {signals['field_lcp_category'].lower()}")
+    if signals.get("field_inp_category"):
+        findings.append(f"real-user responsiveness (INP): {signals['field_inp_category'].lower()}")
+    if not signals.get("meta_description"):
+        findings.append("no meta description")
+    if not signals.get("json_ld_local_business"):
+        findings.append("no structured data (schema.org LocalBusiness) markup")
+    if not signals.get("phone_number"):
+        findings.append("no phone number found on the page")
+    if not signals.get("contact_form_or_booking_link"):
+        findings.append("no contact form or booking link found")
+    if not signals.get("cta_present"):
+        findings.append("no clear call-to-action found")
+    if not signals.get("sitemap_exists"):
+        findings.append("no sitemap.xml")
+    if signals.get("noindex"):
+        findings.append("page is marked noindex (blocked from search engines)")
+    if signals.get("heading_hierarchy_skip"):
+        findings.append("heading hierarchy skips levels (accessibility/SEO issue)")
+    if signals.get("psi_error"):
+        findings.append(f"PageSpeed check failed ({signals['psi_error']}) -- only on-page findings available")
+
+    if not findings:
+        return ""
+
+    return "\nSite audit findings (real, automated checks against their actual homepage): " + "; ".join(findings) + "."
+
+
 def build_user_prompt(lead: sqlite3.Row, demo_exists: bool, draft_exists: bool, funnel: dict) -> str:
     qualification = lead["qualification_status"]
     if qualification == "qualified_no_website":
         situation = "No website listed on Google."
     else:
-        situation = f"Has a website ({lead['website_url']}) but it's outdated."
+        situation = f"Has a website ({lead['website_url']}) but it's outdated.{format_audit_findings(lead)}"
 
     return f"""Shop name: {lead['business_name']}
 City/State: {lead['city']}, {lead['state']}
