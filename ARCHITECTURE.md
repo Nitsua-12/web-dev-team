@@ -121,10 +121,13 @@ The original ask named LangGraph, CrewAI, OpenAI Agents SDK, MCP, Temporal, and 
 
 - `agents/discovery`: 80 tests — pure-function parsers (on-page SEO/conversion signal extraction, PSI response parsing), `httpx.MockTransport`-based tests for every API client covering success, retry/backoff, transport failure, malformed JSON, and non-retryable status codes, and a schema-migration test verified against a real copy of `leads.db` (not just a synthetic fixture) before being trusted against the actual file.
 - `agents/reverify`: 4 tests — the audit-column-reset logic, including the case where `leads.db` hasn't had Discovery's own migration run against it yet.
+- `agents/website_demo`: 16 tests (`test_deploy.py`, `test_generate_demo.py`) — the demo-hosting/noindex pure functions: `build_root_robots_txt()`, `find_indexable_html_outside_allowlist()`, `read_indexable_slugs()`, the per-page robots meta tag token, and `write_sitemap()`.
+- `agents/outreach`: 8 tests (`test_generate_drafts.py`) — `demo_url_for()` and `demo_status_line()` (the demo-URL pure functions), plus a regression test that the demo status line actually appears in `build_user_prompt()`'s output. Doesn't cover the LLM-calling paths.
+- `agents/dossier`: 8 tests (`test_generate_dossier.py`) — same shape as `outreach`: `demo_url_for()`/`demo_status_line()` plus a `build_user_prompt()` regression test. Doesn't cover the LLM-calling/web-search paths.
 
 All using Python's built-in `unittest` — zero new dependency, matching the project's minimal-dependency pattern.
 
-**Not yet covered:** `website_demo`, `outreach`, `dossier`, `suppression`, `reply_triage`, `scheduler`, `outcomes`, and `approval_queue` still rely entirely on the original manual-verification convention. Not because it's wrong, but because it predates the shift to automated tests and hasn't been revisited — worth doing incrementally, the same way `discovery`'s coverage was built up one real bug at a time rather than as an upfront test-everything pass.
+**Not yet covered:** `suppression`, `reply_triage`, `scheduler`, `outcomes`, and `approval_queue` still rely entirely on the original manual-verification convention. Not because it's wrong, but because it predates the shift to automated tests and hasn't been revisited — worth doing incrementally, the same way `discovery`'s coverage was built up one real bug at a time rather than as an upfront test-everything pass.
 
 ## 9. Logging and monitoring
 

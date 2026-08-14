@@ -40,13 +40,24 @@ end with literal `{{TOKEN}}` placeholders — `{{SENDER_NAME}}`,
 your business's real name, address, or unsubscribe mechanism, and
 fabricating them would be worse than leaving them blank.
 
-Also referenced (but you'll need to fill in for real): a demo site link.
-The current [Website Demo Generation agent](../website_demo) produces
-local files, not a hosted URL, so the copy deliberately describes the demo
-in words ("I put together a concept for what a modern site could look
-like") rather than linking to something that doesn't resolve yet. Once
-demos are actually hosted somewhere, this agent should be updated to
-reference a real `{{DEMO_LINK}}` token.
+Also referenced, when there's a real one to reference: a demo site link.
+`demo_url_for()` checks two things before it'll hand back an actual URL —
+that the lead's demo folder exists locally under `--demo-dir` (defaults to
+`../website_demo/output`), and that `DEMO_SITE_BASE_URL` is set in this
+agent's own `.env`. There are three real states a lead can be in: no demo
+built yet, a demo built but not hosted, or a demo live at a URL — only the
+last one gets a link in the copy; the other two get link-free copy that
+describes the demo in words instead ("I put together a concept for what a
+modern site could look like"). There's no `{{DEMO_LINK}}` human-fill-in
+token — that approach was deliberately not taken (see
+`docs/superpowers/specs/2026-08-13-demo-url-in-copy-design.md` §5) in favor
+of the agent knowing the real answer itself. When a link is present, it
+appears verbatim in the initial email and both follow-ups, but is
+deliberately never included in the SMS — a bare link in a cold text reads
+more like spam than the same link in a cold email, and the character
+budget doesn't help either. Note that drafts generated before hosting
+existed for a lead keep their old link-free copy — regeneration is skipped
+unless you pass `--force`.
 
 ## A draft can go stale after it's generated
 

@@ -251,6 +251,7 @@ def render_markdown(lead: sqlite3.Row, draft: dict) -> str:
         f"**Qualification:** {lead['qualification_status']}",
         "",
         "Fill in every `{{TOKEN}}` placeholder before this goes anywhere near a send.",
+        "If this draft contains a demo link, open it and confirm it loads before sending.",
         "",
         "## Initial Email",
         "",

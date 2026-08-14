@@ -1,8 +1,9 @@
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
 
-from generate_drafts import demo_url_for, demo_status_line
+from generate_drafts import demo_url_for, demo_status_line, build_user_prompt
 
 
 class DemoUrlForTests(unittest.TestCase):
@@ -52,6 +53,27 @@ class DemoStatusLineTests(unittest.TestCase):
             result,
             "A concept demo is live for this shop at https://example.pages.dev/ink-iron-tattoo-austin/ "
             "-- reference this exact URL in the email (and follow-ups) when inviting them to look.",
+        )
+
+
+class BuildUserPromptDemoStatusTests(unittest.TestCase):
+    def test_demo_status_line_appears_in_prompt(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        conn.execute(
+            "CREATE TABLE leads (business_name TEXT, city TEXT, state TEXT, "
+            "phone TEXT, qualification_status TEXT, website_url TEXT, website_signals TEXT)"
+        )
+        conn.execute(
+            "INSERT INTO leads VALUES (?, ?, ?, ?, ?, ?, ?)",
+            ("Ink & Iron Tattoo", "Austin", "TX", "(512) 555-0100", "qualified_no_website", None, None),
+        )
+        lead = conn.execute("SELECT * FROM leads").fetchone()
+
+        prompt = build_user_prompt(lead, demo_exists=True, demo_url="https://example.pages.dev/ink-iron-tattoo-austin/")
+        self.assertIn(
+            "A concept demo is live for this shop at https://example.pages.dev/ink-iron-tattoo-austin/",
+            prompt,
         )
 
 

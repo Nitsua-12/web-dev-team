@@ -42,10 +42,14 @@ before rendering to markdown.
   counts, social presence, anything notable). If nothing useful comes up,
   it says so rather than padding with generic filler — confirmed in
   testing, not just prompted for.
-- **Website demo / communication history** — just status flags (does a
-  demo exist, does a draft exist, has anything been sent) pulled from the
-  other two agents' output directories. Not fabricated — if those agents
-  haven't run for a lead yet, the dossier says so plainly.
+- **Website demo / communication history** — pulled from the other two
+  agents' output directories. The demo signal is a real three-state read,
+  not a bool: no demo built yet, a demo built but not hosted, or a demo
+  live at a real URL — and the live case renders an actual clickable link
+  in the "## Website Demo" section instead of a local file path.
+  Communication history is still a simple flag (does a draft exist, has
+  anything been sent). Not fabricated — if those agents haven't run for a
+  lead yet, the dossier says so plainly.
 - **Talking points** — 3-5 concrete points grounded in the lead's actual
   data and research findings, not generic sales boilerplate.
 - **Budget estimate and likelihood of closing** — deliberately **not**

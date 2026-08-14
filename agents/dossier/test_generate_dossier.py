@@ -1,8 +1,9 @@
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
 
-from generate_dossier import demo_url_for, demo_status_line
+from generate_dossier import demo_url_for, demo_status_line, build_user_prompt
 
 
 class DemoUrlForTests(unittest.TestCase):
@@ -46,6 +47,42 @@ class DemoStatusLineTests(unittest.TestCase):
     def test_demo_live(self):
         result = demo_status_line(demo_exists=True, demo_url="https://example.pages.dev/ink-iron-tattoo-austin/")
         self.assertEqual(result, "a concept demo is live at https://example.pages.dev/ink-iron-tattoo-austin/")
+
+
+class BuildUserPromptDemoStatusTests(unittest.TestCase):
+    def test_demo_status_line_appears_in_prompt(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        conn.execute(
+            "CREATE TABLE leads (business_name TEXT, city TEXT, state TEXT, "
+            "phone TEXT, formatted_address TEXT, qualification_status TEXT, website_url TEXT)"
+        )
+        conn.execute(
+            "INSERT INTO leads VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                "Ink & Iron Tattoo",
+                "Austin",
+                "TX",
+                "(512) 555-0100",
+                "123 Main St, Austin, TX",
+                "qualified_no_website",
+                None,
+            ),
+        )
+        lead = conn.execute("SELECT * FROM leads").fetchone()
+        funnel = {"total_sent": 0}
+
+        prompt = build_user_prompt(
+            lead,
+            demo_exists=True,
+            demo_url="https://example.pages.dev/ink-iron-tattoo-austin/",
+            draft_exists=False,
+            funnel=funnel,
+        )
+        self.assertIn(
+            "a concept demo is live at https://example.pages.dev/ink-iron-tattoo-austin/",
+            prompt,
+        )
 
 
 if __name__ == "__main__":

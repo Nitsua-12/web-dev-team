@@ -322,8 +322,8 @@ def render_markdown(lead: sqlite3.Row, dossier: dict, demo_path: Path | None, de
         demo_lines = [
             f"**Live demo:** {demo_url}",
             "This is a real, hosted concept site -- not the shop's final production "
-            "site, and not indexed by search engines unless this lead has already "
-            "responded (see the website_demo agent's README's Hosting section).",
+            "site, and not indexed by search engines unless its slug has been added "
+            "to indexable_slugs.txt (see the website_demo agent's README's Hosting section).",
         ]
     elif demo_path:
         demo_lines = [
