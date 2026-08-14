@@ -66,6 +66,19 @@ concept/demo, and overclaiming here is a real problem, not a nitpick. Frame \
 it as "here's what we put together for you" / "want to see it" rather than \
 "your new site is ready."
 
+When you're told a concept demo is live at a specific URL, invite them to \
+look at it using that exact URL, reproduced exactly as given -- do not \
+alter, shorten, retype, or paraphrase it. Use it in the initial email body \
+and in both follow-up emails. Never include a link, or imply one exists, \
+in the SMS -- keep the SMS pitch link-free regardless of whether a demo is \
+live, mentioning only that a concept has been put together and inviting a \
+reply.
+
+If no demo is live yet (either none has been built, or it exists but isn't \
+hosted), do not include a link or imply one exists anywhere -- keep the \
+"take a look" language general (e.g. inviting them to reply to see it) \
+rather than pointing at something that doesn't exist yet.
+
 Tone: direct, low-pressure, plainly written -- like a local business owner \
 reaching out, not a marketing agency. No exclamation-point energy, no fake \
 urgency, no "act now" language.
@@ -192,7 +205,7 @@ def describe_website_issues(signals_json: str | None) -> list[str]:
     return issues
 
 
-def build_user_prompt(lead: sqlite3.Row) -> str:
+def build_user_prompt(lead: sqlite3.Row, demo_exists: bool, demo_url: str | None) -> str:
     qualification = lead["qualification_status"]
     if qualification == "qualified_no_website":
         situation = "This shop has no website at all listed on Google."
@@ -207,11 +220,12 @@ def build_user_prompt(lead: sqlite3.Row) -> str:
 City/State: {lead['city']}, {lead['state']}
 Phone (from Google listing, public): {lead['phone']}
 Situation: {situation}
+Demo status: {demo_status_line(demo_exists, demo_url)}
 
 Write the outreach copy now."""
 
 
-def generate_draft(client: Anthropic, lead: sqlite3.Row) -> dict:
+def generate_draft(client: Anthropic, lead: sqlite3.Row, demo_exists: bool, demo_url: str | None) -> dict:
     response = client.messages.create(
         model=MODEL,
         max_tokens=4096,
@@ -222,7 +236,7 @@ def generate_draft(client: Anthropic, lead: sqlite3.Row) -> dict:
         # ARCHITECTURE.md Section 12. Do NOT copy this to the Dossier agent --
         # its web_search tool made medium effort MORE expensive there, not less.
         output_config={"format": {"type": "json_schema", "schema": OUTPUT_SCHEMA}, "effort": "medium"},
-        messages=[{"role": "user", "content": build_user_prompt(lead)}],
+        messages=[{"role": "user", "content": build_user_prompt(lead, demo_exists, demo_url)}],
     )
     text = next(b.text for b in response.content if b.type == "text")
     return json.loads(text)
@@ -270,6 +284,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Outreach Copywriting Agent")
     parser.add_argument("--db", type=Path, default=DEFAULT_DB, help="Path to Discovery Agent's leads.db")
     parser.add_argument("--suppression-db", type=Path, default=DEFAULT_SUPPRESSION_DB, help="Path to the suppression list db")
+    parser.add_argument("--demo-dir", type=Path, default=DEFAULT_DEMO_DIR, help="Path to Website Demo Generation Agent's output directory")
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR, help="Where to write drafts")
     parser.add_argument("--limit", type=int, default=None, help="Only process the first N qualified leads")
     parser.add_argument("--force", action="store_true", help="Regenerate drafts that already exist")
@@ -281,6 +296,8 @@ def main() -> None:
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
     if not api_key:
         raise SystemExit("ANTHROPIC_API_KEY not set -- add it to .env")
+
+    site_base_url = os.environ.get("DEMO_SITE_BASE_URL", "").strip() or None
 
     client = Anthropic(api_key=api_key)
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -305,7 +322,10 @@ def main() -> None:
             print(f"  {lead['business_name']} -> SKIPPED (phone is on the suppression list)")
             continue
 
-        draft = generate_draft(client, lead)
+        demo_exists = (args.demo_dir / slug).exists()
+        demo_url = demo_url_for(lead["business_name"], lead["city"] or "", args.demo_dir, site_base_url)
+
+        draft = generate_draft(client, lead, demo_exists, demo_url)
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(render_markdown(lead, draft), encoding="utf-8")
         # Structured sidecar -- draft.md is for a human to read; draft.json is
