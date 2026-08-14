@@ -32,6 +32,7 @@ from state_names import STATE_NAMES
 DEFAULT_DB = Path(__file__).parent.parent / "discovery" / "leads.db"
 DEFAULT_TEMPLATE_DIR = Path(__file__).parent / "template"
 DEFAULT_OUTPUT_DIR = Path(__file__).parent / "output"
+DEFAULT_INDEXABLE_SLUGS_FILE = Path(__file__).parent / "indexable_slugs.txt"
 
 QUALIFYING_STATUSES = ("qualified_no_website", "qualified_outdated")
 
@@ -115,6 +116,16 @@ def build_tokens(lead: sqlite3.Row, palette: dict | None) -> dict:
         "YEAR": str(datetime.date.today().year),
         "PALETTE_STYLE_BLOCK": style_block,
     }
+
+
+def read_indexable_slugs(path: Path) -> set[str]:
+    """Slugs cleared to be indexed by search engines -- see ROBOTS_META_TAG
+    in page_tokens(). One slug per line; a missing file or blank lines are
+    tolerated, not errors -- "nothing cleared yet" is the correct starting
+    state and looks the same as "file doesn't exist"."""
+    if not path.exists():
+        return set()
+    return {line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()}
 
 
 def page_url(site_base_url: str, slug: str, html_file: str) -> str:
