@@ -5,6 +5,7 @@
 # Local databases (operational state, not source)
 *.db
 **/*.db
+agents/website_demo/indexable_slugs.txt
 
 # Python
 .venv/
