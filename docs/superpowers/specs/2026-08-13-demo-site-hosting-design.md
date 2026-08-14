@@ -22,8 +22,8 @@ A lead is only made indexable once they've actually responded (the point where `
 
 Two layers are used together, because they serve different purposes:
 
-1. **`<meta name="robots" content="noindex">`** in every page's `<head>`, unless the lead's slug is explicitly cleared. This is what actually keeps a page out of search results, including if someone links to it directly — `robots.txt` alone can still let a bare URL appear in search results without content if it's discovered via an external link.
-2. **A real root `robots.txt`**, generated at deploy time, blocking crawling of everything except explicitly-cleared slugs. Belt-and-suspenders with (1), and the piece that was broken (§2).
+1. **`<meta name="robots" content="noindex">`** in every page's `<head>`, unless the lead's slug is explicitly cleared. This is the layer that would keep a page out of search results if it were ever crawled or linked.
+2. **A real root `robots.txt`**, generated at deploy time, blocking crawling of everything except explicitly-cleared slugs. This is the primary real-world protection: a page blocked by `Disallow: /` is never crawled at all, so a search engine never even sees the meta tag. `Disallow` alone isn't airtight in theory — per Google's own documented behavior, a URL discovered via an external link can still appear as a bare, contentless search result even though it was never crawled, which is Google's documented reason for recommending against combining `Disallow` with `noindex` when de-indexing is the actual goal — but in practice nothing links to these demos, so this is low risk. The meta tag (1) is the belt-and-suspenders layer for that theoretical case.
 
 ## 4. Hosting choice: Cloudflare Pages
 
@@ -45,7 +45,7 @@ No custom domain yet — demos live at `https://<project-name>.pages.dev/<slug>/
 All changes live inside the existing `agents/website_demo/` agent — no new agent, no new venv.
 
 **`generate_demo.py` changes:**
-- New `ROBOTS_META_TAG` token, computed in `page_tokens()` alongside the existing `CANONICAL_TAG`/`OG_URL_TAG`: renders `<meta name="robots" content="noindex">` unless the lead's slug is in `indexable_slugs.txt`, in which case it renders nothing (same "omit rather than assert" pattern already used when `site_base_url` is unset).
+- New `ROBOTS_META_TAG` token, computed in `page_tokens()` alongside the existing `CANONICAL_TAG`/`OG_URL_TAG`: renders `<meta name="robots" content="noindex">` unless the lead's slug is in `indexable_slugs.txt`, in which case it renders `<meta name="robots" content="index, follow">` — an explicit tag either way, matching the template's pre-existing pattern of every page always carrying a robots meta tag, rather than omitting it when cleared.
 - `write_seo_files()` no longer writes a per-slug `robots.txt` (§2). `sitemap.xml` generation is unaffected — a sitemap, unlike `robots.txt`, does not need to live at the site root, so the existing per-slug sitemap is already correct as built.
 - New small helper to read `indexable_slugs.txt` (one slug per line; missing file or blank lines tolerated, treated as "nothing indexable yet").
 

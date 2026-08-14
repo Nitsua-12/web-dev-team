@@ -145,8 +145,8 @@ def page_tokens(html_file: str, slug: str, site_base_url: str | None, indexable_
 
     CANONICAL_TAG/OG_URL_TAG/JSONLD_URL_FIELD need an absolute URL to be
     meaningful, which only exists once the demo is actually hosted
-    somewhere (not built yet -- see ARCHITECTURE.md roadmap). Without
-    site_base_url they render as nothing rather than pointing at a
+    somewhere (see README.md's Hosting section for how to set that up).
+    Without site_base_url they render as nothing rather than pointing at a
     fake/placeholder domain -- a missing canonical is harmless, a wrong
     one actively hurts indexing.
 
@@ -248,8 +248,8 @@ def main() -> None:
         default=os.environ.get("DEMO_SITE_BASE_URL", ""),
         help="Base URL demos are hosted at (e.g. https://demos.example.com). "
         "Enables canonical/og:url tags and per-lead sitemap.xml. "
-        "Falls back to DEMO_SITE_BASE_URL in .env. Omit until hosting exists -- "
-        "see README.md's Hosting section.",
+        "Falls back to DEMO_SITE_BASE_URL in .env. Omit if you haven't set up "
+        "Cloudflare Pages hosting yet -- see README.md's Hosting section.",
     )
     parser.add_argument(
         "--indexable-slugs-file",
@@ -277,7 +277,8 @@ def main() -> None:
     print(f"{len(leads)} qualified lead(s) found")
     if not site_base_url:
         print("No --site-base-url / DEMO_SITE_BASE_URL set -- canonical/og:url tags "
-              "and sitemap.xml will be omitted until demo hosting exists.")
+              "and sitemap.xml will be omitted until you set one up (see README.md's "
+              "Hosting section).")
 
     generated, skipped = 0, 0
     for lead in leads:

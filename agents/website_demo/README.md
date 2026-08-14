@@ -130,11 +130,23 @@ outreach; it just won't show up in search results.
 Two mechanisms enforce this together:
 
 1. A `<meta name="robots" content="noindex">` tag on every page (see
-   `ROBOTS_META_TAG` in `page_tokens()`), which is what actually keeps a
-   page out of search results even if it's linked from elsewhere.
+   `ROBOTS_META_TAG` in `page_tokens()`), which is the layer that would
+   keep a page out of search results if it were ever crawled or linked.
 2. A real root-level `robots.txt`, written by `deploy.py` from
    `indexable_slugs.txt`, blocking crawling of everything except
-   explicitly-cleared slugs.
+   explicitly-cleared slugs. This is the primary real-world protection
+   here: a page blocked by `Disallow: /` is never crawled at all, so a
+   search engine never even sees the meta tag. (`Disallow` alone isn't
+   airtight in theory -- a URL discovered via an external link can still
+   surface as a bare, contentless search result even though it was never
+   crawled, which is why the meta tag exists as a second layer -- but in
+   practice nothing links to these demos, so this is low risk.)
+
+`deploy.py` also refuses to deploy if it finds any page whose slug isn't
+in `indexable_slugs.txt` but whose HTML still claims `index, follow` --
+see `find_indexable_html_outside_allowlist()`. This is the safety net for
+the failure mode below, where a lead drops out of qualification and its
+stale HTML would otherwise ship unchanged.
 
 **Once a lead actually responds** and it's appropriate for their demo to
 be findable, clear it:
@@ -145,6 +157,24 @@ python generate_demo.py --force    # regenerate every demo (cheap, no LLM calls)
                                     # only the newly-cleared one's tag actually changes
 python deploy.py                   # redeploy with the updated robots.txt
 ```
+
+**To revoke indexability** (remove a slug that was previously cleared),
+the order matters -- edit the file *then regenerate before deploying*,
+not just edit and deploy:
+
+```
+# remove their line from indexable_slugs.txt first, then:
+python generate_demo.py --force    # regenerate every demo; the un-cleared lead's
+                                    # tag flips back to noindex
+python deploy.py                   # redeploy with the updated robots.txt
+```
+
+Deploying without re-running `generate_demo.py --force` first would ship
+`output/robots.txt` correctly (it's generated fresh from
+`indexable_slugs.txt` every time), but the removed lead's HTML would
+still carry its old `index, follow` meta tag from when it was cleared --
+exactly the stale-content bug `find_indexable_html_outside_allowlist()`
+in `deploy.py` now catches and refuses to deploy.
 
 `indexable_slugs.txt` is plain text, one slug per line, gitignored (it's
 operational state -- real business slugs -- not source, same treatment as
