@@ -52,6 +52,7 @@ class DemoStatusLineTests(unittest.TestCase):
 class BuildUserPromptDemoStatusTests(unittest.TestCase):
     def test_demo_status_line_appears_in_prompt(self):
         conn = sqlite3.connect(":memory:")
+        self.addCleanup(conn.close)
         conn.row_factory = sqlite3.Row
         conn.execute(
             "CREATE TABLE leads (business_name TEXT, city TEXT, state TEXT, "
