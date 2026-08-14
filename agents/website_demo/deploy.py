@@ -18,6 +18,7 @@ CLOUDFLARE_ACCOUNT_ID in .env -- see README.md's Hosting section for setup.
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -35,6 +36,23 @@ def build_root_robots_txt(indexable_slugs: set[str]) -> str:
     lines = ["User-agent: *", "Disallow: /"]
     lines += [f"Allow: /{slug}/" for slug in sorted(indexable_slugs)]
     return "\n".join(lines) + "\n"
+
+
+def find_indexable_html_outside_allowlist(output_dir: Path, indexable_slugs: set[str]) -> list[Path]:
+    """Scans output_dir/<slug>/**/*.html for pages claiming index,follow
+    whose slug isn't in indexable_slugs -- the deploy-time safety net for
+    the noindex-by-default guarantee. Catches a demo that wasn't
+    regenerated after its clearance changed (e.g. a lead dropped out of
+    qualification and generate_demo.py --force no longer touches it, but
+    its stale HTML still ships on every deploy)."""
+    violations = []
+    for html_file in sorted(output_dir.glob("*/**/*.html")):
+        slug = html_file.relative_to(output_dir).parts[0]
+        if slug in indexable_slugs:
+            continue
+        if 'content="index, follow"' in html_file.read_text(encoding="utf-8"):
+            violations.append(html_file)
+    return violations
 
 
 def main() -> None:
@@ -59,6 +77,22 @@ def main() -> None:
         raise SystemExit(f"{', '.join(missing)} not set -- add to .env, see README.md's Hosting section")
 
     indexable_slugs = read_indexable_slugs(DEFAULT_INDEXABLE_SLUGS_FILE)
+
+    violations = find_indexable_html_outside_allowlist(DEFAULT_OUTPUT_DIR, indexable_slugs)
+    if violations:
+        listed = "\n".join(f"  - {path}" for path in violations)
+        raise SystemExit(
+            "Refusing to deploy: found page(s) with content=\"index, follow\" whose slug "
+            "isn't in indexable_slugs.txt:\n"
+            f"{listed}\n\n"
+            "This usually means a demo's content is stale -- either the lead was cleared "
+            "and then un-cleared without regenerating, or (more likely) the lead dropped "
+            "out of qualification so `generate_demo.py --force` no longer touches its "
+            "output/<slug>/ directory, leaving old index,follow HTML in place. Fix by "
+            "either re-qualifying the lead and re-running `generate_demo.py --force`, or "
+            "deleting the stale output/<slug>/ directory before deploying."
+        )
+
     (DEFAULT_OUTPUT_DIR / "robots.txt").write_text(build_root_robots_txt(indexable_slugs), encoding="utf-8")
     print(
         f"robots.txt written -- {len(indexable_slugs)} indexable slug(s): "
