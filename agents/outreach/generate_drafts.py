@@ -43,6 +43,7 @@ import db as suppression_db
 MODEL = "claude-sonnet-5"
 DEFAULT_DB = Path(__file__).parent.parent / "discovery" / "leads.db"
 DEFAULT_SUPPRESSION_DB = Path(__file__).parent.parent / "suppression" / "suppression.db"
+DEFAULT_DEMO_DIR = Path(__file__).parent.parent / "website_demo" / "output"
 DEFAULT_OUTPUT_DIR = Path(__file__).parent / "drafts"
 QUALIFYING_STATUSES = ("qualified_no_website", "qualified_outdated")
 
@@ -111,6 +112,32 @@ def slugify(business_name: str, city: str) -> str:
     raw = f"{business_name}-{city}"
     slug = re.sub(r"[^a-z0-9]+", "-", raw.lower()).strip("-")
     return slug or "lead"
+
+
+def demo_url_for(business_name: str, city: str, demo_dir: Path, site_base_url: str | None) -> str | None:
+    """Real, live URL for a lead's demo, or None if it isn't actually live.
+    Both conditions must hold: the demo was generated locally (demo_dir/<slug>
+    exists) AND hosting is configured (site_base_url set) -- folder-exists
+    alone isn't enough, since a demo can be generated without ever being
+    deployed. See agents/website_demo/deploy.py for the actual hosting step."""
+    if not site_base_url:
+        return None
+    slug = slugify(business_name, city)
+    if not (demo_dir / slug).exists():
+        return None
+    return f"{site_base_url.rstrip('/')}/{slug}/"
+
+
+def demo_status_line(demo_exists: bool, demo_url: str | None) -> str:
+    """Demo status: three real states, not a bool -- see demo_url_for()."""
+    if demo_url:
+        return (
+            f"A concept demo is live for this shop at {demo_url} -- reference "
+            "this exact URL in the email (and follow-ups) when inviting them to look."
+        )
+    if demo_exists:
+        return "A concept demo has been built for this shop but isn't hosted/live yet -- do not include a link."
+    return "No concept demo has been built for this shop yet."
 
 
 OUTPUT_SCHEMA = {
