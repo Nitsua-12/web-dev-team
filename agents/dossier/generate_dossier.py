@@ -99,7 +99,12 @@ missing schema markup, no phone number found on the page, etc.), not \
 guesses. When present, cite them concretely in your talking points instead \
 of generic phrasing like "your website looks outdated" -- a specific, \
 real finding is more credible to a salesperson on a call than a vague \
-claim."""
+claim.
+
+When the shop has a live, hosted demo (you'll be told the exact URL if \
+so), you may mention in your talking points that a live concept site \
+exists and can be shared with the shop directly -- a real, useful fact for \
+the salesperson. Don't claim it's live if you weren't given a URL."""
 
 
 WEB_SEARCH_TOOL = {
@@ -266,7 +271,7 @@ def format_audit_findings(lead: sqlite3.Row) -> str:
     return "\nSite audit findings (real, automated checks against their actual homepage): " + "; ".join(findings) + "."
 
 
-def build_user_prompt(lead: sqlite3.Row, demo_exists: bool, draft_exists: bool, funnel: dict) -> str:
+def build_user_prompt(lead: sqlite3.Row, demo_exists: bool, demo_url: str | None, draft_exists: bool, funnel: dict) -> str:
     qualification = lead["qualification_status"]
     if qualification == "qualified_no_website":
         situation = "No website listed on Google."
@@ -278,15 +283,15 @@ City/State: {lead['city']}, {lead['state']}
 Phone (public, from Google listing): {lead['phone']}
 Address: {lead['formatted_address']}
 Situation: {situation}
-Demo site status: {"a concept demo has been built (not yet hosted/live)" if demo_exists else "no demo built yet"}
+Demo site status: {demo_status_line(demo_exists, demo_url)}
 Outreach status: {"a draft outreach email/SMS exists but nothing has been sent" if draft_exists else "no outreach drafted yet"}
 {build_funnel_context(funnel)}
 
 Search for public context on this shop if you can find anything real, then prepare the handoff brief."""
 
 
-def query_claude(client: Anthropic, lead: sqlite3.Row, demo_exists: bool, draft_exists: bool, funnel: dict) -> dict:
-    messages = [{"role": "user", "content": build_user_prompt(lead, demo_exists, draft_exists, funnel)}]
+def query_claude(client: Anthropic, lead: sqlite3.Row, demo_exists: bool, demo_url: str | None, draft_exists: bool, funnel: dict) -> dict:
+    messages = [{"role": "user", "content": build_user_prompt(lead, demo_exists, demo_url, draft_exists, funnel)}]
 
     response = client.messages.create(
         model=MODEL,
@@ -312,7 +317,22 @@ def query_claude(client: Anthropic, lead: sqlite3.Row, demo_exists: bool, draft_
     return json.loads(text_blocks[-1])
 
 
-def render_markdown(lead: sqlite3.Row, dossier: dict, demo_path: Path | None, draft_path: Path | None) -> str:
+def render_markdown(lead: sqlite3.Row, dossier: dict, demo_path: Path | None, demo_url: str | None, draft_path: Path | None) -> str:
+    if demo_url:
+        demo_lines = [
+            f"**Live demo:** {demo_url}",
+            "This is a real, hosted concept site -- not the shop's final production "
+            "site, and not indexed by search engines unless this lead has already "
+            "responded (see the website_demo agent's README's Hosting section).",
+        ]
+    elif demo_path:
+        demo_lines = [
+            f"Demo exists locally at `{demo_path}`, not yet hosted/live.",
+            "This is a concept/mockup, not a hosted live site -- see the website_demo agent's README before referencing it as more than that.",
+        ]
+    else:
+        demo_lines = ["No demo has been generated for this lead yet."]
+
     lines = [
         f"# Sales Handoff Dossier: {lead['business_name']}",
         "",
@@ -334,8 +354,7 @@ def render_markdown(lead: sqlite3.Row, dossier: dict, demo_path: Path | None, dr
         "",
         "## Website Demo",
         "",
-        f"Demo exists locally at `{demo_path}`." if demo_path else "No demo has been generated for this lead yet.",
-        "This is a concept/mockup, not a hosted live site -- see the website_demo agent's README before referencing it as more than that.",
+        *demo_lines,
         "",
         "## Communication History",
         "",
@@ -386,6 +405,8 @@ def main() -> None:
     if not api_key:
         raise SystemExit("ANTHROPIC_API_KEY not set -- add it to .env")
 
+    site_base_url = os.environ.get("DEMO_SITE_BASE_URL", "").strip() or None
+
     client = Anthropic(api_key=api_key)
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -408,13 +429,14 @@ def main() -> None:
 
         demo_path = args.demo_dir / slug
         demo_path = demo_path if demo_path.exists() else None
+        demo_url = demo_url_for(lead["business_name"], lead["city"] or "", args.demo_dir, site_base_url)
         draft_path = args.drafts_dir / slug / "draft.md"
         draft_path = draft_path if draft_path.exists() else None
 
-        dossier = query_claude(client, lead, demo_path is not None, draft_path is not None, funnel)
+        dossier = query_claude(client, lead, demo_path is not None, demo_url, draft_path is not None, funnel)
 
         dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_text(render_markdown(lead, dossier, demo_path, draft_path), encoding="utf-8")
+        dest.write_text(render_markdown(lead, dossier, demo_path, demo_url, draft_path), encoding="utf-8")
 
         generated += 1
         print(f"  {lead['business_name']} -> {dest} [{dossier['likelihood_of_closing']}]")
