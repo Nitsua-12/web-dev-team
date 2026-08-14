@@ -39,7 +39,7 @@ QUALIFYING_STATUSES = ("qualified_no_website", "qualified_outdated")
 # Every page that ships in the demo. Paths are relative to template/, always
 # forward-slash regardless of OS. Adding a page here is the only step needed
 # for it to get token substitution, a canonical/og:url pair (once hosted),
-# and a sitemap.xml entry -- see page_url() and write_seo_files().
+# and a sitemap.xml entry -- see page_url() and write_sitemap().
 HTML_FILES = [
     "index.html",
     "booking.html",
@@ -139,23 +139,35 @@ def page_url(site_base_url: str, slug: str, html_file: str) -> str:
     return base_dir + html_file
 
 
-def page_tokens(html_file: str, slug: str, site_base_url: str | None) -> dict:
-    """CANONICAL_TAG/OG_URL_TAG/JSONLD_URL_FIELD for one specific page.
+def page_tokens(html_file: str, slug: str, site_base_url: str | None, indexable_slugs: set[str]) -> dict:
+    """CANONICAL_TAG/OG_URL_TAG/JSONLD_URL_FIELD/ROBOTS_META_TAG for one
+    specific page.
 
-    These need an absolute URL to be meaningful, which only exists once the
-    demo is actually hosted somewhere (not built yet -- see ARCHITECTURE.md
-    roadmap). Without site_base_url they render as nothing rather than
-    pointing at a fake/placeholder domain -- a missing canonical is
-    harmless, a wrong one actively hurts indexing.
+    CANONICAL_TAG/OG_URL_TAG/JSONLD_URL_FIELD need an absolute URL to be
+    meaningful, which only exists once the demo is actually hosted
+    somewhere (not built yet -- see ARCHITECTURE.md roadmap). Without
+    site_base_url they render as nothing rather than pointing at a
+    fake/placeholder domain -- a missing canonical is harmless, a wrong
+    one actively hurts indexing.
+
+    ROBOTS_META_TAG doesn't depend on hosting -- every demo defaults to
+    noindex regardless, since these are unsolicited mockups sent to
+    businesses that haven't agreed to anything. Only a slug explicitly
+    listed in indexable_slugs (see read_indexable_slugs()) gets
+    "index, follow", and only after that business has actually responded.
     """
+    robots_content = "index, follow" if slug in indexable_slugs else "noindex"
+    robots_tag = {"ROBOTS_META_TAG": f'<meta name="robots" content="{robots_content}">'}
+
     if not site_base_url:
-        return {"CANONICAL_TAG": "", "OG_URL_TAG": "", "JSONLD_URL_FIELD": ""}
+        return {"CANONICAL_TAG": "", "OG_URL_TAG": "", "JSONLD_URL_FIELD": "", **robots_tag}
 
     url = page_url(site_base_url, slug, html_file)
     return {
         "CANONICAL_TAG": f'<link rel="canonical" href="{url}">',
         "OG_URL_TAG": f'<meta property="og:url" content="{url}">',
         "JSONLD_URL_FIELD": f',\n  "url": "{url}"',
+        **robots_tag,
     }
 
 
@@ -165,17 +177,14 @@ def apply_tokens(text: str, tokens: dict) -> str:
     return text
 
 
-def write_seo_files(dest: Path, slug: str, site_base_url: str) -> None:
-    """robots.txt and sitemap.xml both need an absolute site URL to be
-    meaningful -- only called when one is configured, see page_tokens()."""
-    base = site_base_url.rstrip("/")
-    sitemap_url = f"{base}/{slug}/sitemap.xml"
-
-    (dest / "robots.txt").write_text(
-        f"User-agent: *\nAllow: /\n\nSitemap: {sitemap_url}\n",
-        encoding="utf-8",
-    )
-
+def write_sitemap(dest: Path, slug: str, site_base_url: str) -> None:
+    """sitemap.xml needs an absolute site URL to be meaningful -- only
+    called when one is configured, see page_tokens(). Unlike robots.txt
+    (see deploy.py's build_root_robots_txt()), a sitemap doesn't need to
+    live at a site's root, so a per-slug file here is correct as-is. This
+    function used to also write a per-slug robots.txt, which never had
+    any effect once hosted -- crawlers only ever read robots.txt at a
+    site's actual root -- so that part has been removed."""
     today = datetime.date.today().isoformat()
     entries = "\n".join(
         f"  <url><loc>{page_url(site_base_url, slug, f)}</loc><lastmod>{today}</lastmod></url>"
@@ -197,6 +206,7 @@ def generate_demo(
     force: bool,
     palette: dict | None,
     site_base_url: str | None,
+    indexable_slugs: set[str],
 ) -> Path:
     slug = slugify(lead["business_name"], lead["city"] or "")
     dest = output_dir / slug
@@ -214,12 +224,12 @@ def generate_demo(
         path = dest / html_file
         if not path.exists():
             continue
-        tokens = {**base_tokens, **page_tokens(html_file, slug, site_base_url)}
+        tokens = {**base_tokens, **page_tokens(html_file, slug, site_base_url, indexable_slugs)}
         original = path.read_text(encoding="utf-8")
         path.write_text(apply_tokens(original, tokens), encoding="utf-8")
 
     if site_base_url:
-        write_seo_files(dest, slug, site_base_url)
+        write_sitemap(dest, slug, site_base_url)
 
     return dest
 
@@ -237,12 +247,20 @@ def main() -> None:
         "--site-base-url",
         default=os.environ.get("DEMO_SITE_BASE_URL", ""),
         help="Base URL demos are hosted at (e.g. https://demos.example.com). "
-        "Enables canonical/og:url tags and per-lead robots.txt + sitemap.xml. "
+        "Enables canonical/og:url tags and per-lead sitemap.xml. "
         "Falls back to DEMO_SITE_BASE_URL in .env. Omit until hosting exists -- "
-        "see ARCHITECTURE.md roadmap.",
+        "see README.md's Hosting section.",
+    )
+    parser.add_argument(
+        "--indexable-slugs-file",
+        type=Path,
+        default=DEFAULT_INDEXABLE_SLUGS_FILE,
+        help="Plain text, one slug per line -- leads cleared to be indexed by "
+        "search engines. Every demo defaults to noindex. See README.md.",
     )
     args = parser.parse_args()
     site_base_url = args.site_base_url.strip() or None
+    indexable_slugs = read_indexable_slugs(args.indexable_slugs_file)
 
     if not args.db.exists():
         raise SystemExit(f"leads.db not found at {args.db} -- run the Discovery Agent first")
@@ -258,8 +276,8 @@ def main() -> None:
     leads = fetch_qualified_leads(args.db, args.limit)
     print(f"{len(leads)} qualified lead(s) found")
     if not site_base_url:
-        print("No --site-base-url / DEMO_SITE_BASE_URL set -- canonical/og:url tags, "
-              "robots.txt, and sitemap.xml will be omitted until demo hosting exists.")
+        print("No --site-base-url / DEMO_SITE_BASE_URL set -- canonical/og:url tags "
+              "and sitemap.xml will be omitted until demo hosting exists.")
 
     generated, skipped = 0, 0
     for lead in leads:
@@ -270,7 +288,7 @@ def main() -> None:
         if not args.no_palette and not pre_existing:
             palette = photo_palette.get_palette(lead["google_place_id"], api_key)
 
-        dest = generate_demo(lead, args.template_dir, args.output_dir, args.force, palette, site_base_url)
+        dest = generate_demo(lead, args.template_dir, args.output_dir, args.force, palette, site_base_url, indexable_slugs)
 
         palette_note = f" (accent {palette['accent']})" if palette else " (default palette)"
         if pre_existing:
