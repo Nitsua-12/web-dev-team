@@ -172,6 +172,29 @@ def slugify(business_name: str, city: str) -> str:
     return slug or "lead"
 
 
+def demo_url_for(business_name: str, city: str, demo_dir: Path, site_base_url: str | None) -> str | None:
+    """Real, live URL for a lead's demo, or None if it isn't actually live.
+    Both conditions must hold: the demo was generated locally (demo_dir/<slug>
+    exists) AND hosting is configured (site_base_url set) -- folder-exists
+    alone isn't enough, since a demo can be generated without ever being
+    deployed. See agents/website_demo/deploy.py for the actual hosting step."""
+    if not site_base_url:
+        return None
+    slug = slugify(business_name, city)
+    if not (demo_dir / slug).exists():
+        return None
+    return f"{site_base_url.rstrip('/')}/{slug}/"
+
+
+def demo_status_line(demo_exists: bool, demo_url: str | None) -> str:
+    """Demo site status: three real states, not a bool -- see demo_url_for()."""
+    if demo_url:
+        return f"a concept demo is live at {demo_url}"
+    if demo_exists:
+        return "a concept demo has been built (not yet hosted/live)"
+    return "no demo built yet"
+
+
 def build_funnel_context(funnel: dict) -> str:
     if funnel["total_sent"] == 0:
         return ""  # nothing has gone out yet -- don't manufacture a section about it
