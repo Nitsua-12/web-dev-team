@@ -125,9 +125,12 @@ The original ask named LangGraph, CrewAI, OpenAI Agents SDK, MCP, Temporal, and 
 - `agents/outreach`: 8 tests (`test_generate_drafts.py`) — `demo_url_for()` and `demo_status_line()` (the demo-URL pure functions), plus a regression test that the demo status line actually appears in `build_user_prompt()`'s output. Doesn't cover the LLM-calling paths.
 - `agents/dossier`: 8 tests (`test_generate_dossier.py`) — same shape as `outreach`: `demo_url_for()`/`demo_status_line()` plus a `build_user_prompt()` regression test. Doesn't cover the LLM-calling/web-search paths.
 
+- `agents/suppression`: 23 tests (`test_db.py`) — phone/email normalization, the add/is_suppressed/list/remove lifecycle, the upsert-on-readd behavior, and the unnormalizable-value edge cases. No LLM involved anywhere in this agent.
+- `agents/reply_triage`: 22 tests across `test_db.py` (the replies-log CRUD) and `test_triage_cli.py` (`slugify()`, `lookup_lead()`'s business-name/phone matching, `take_action()`'s per-classification branching including the auto-suppress path, `update_dossier()`'s marker-insert/prepend/missing-file cases). Doesn't cover `classify_reply()` or `main()`, the only parts that call the real Anthropic API.
+
 All using Python's built-in `unittest` — zero new dependency, matching the project's minimal-dependency pattern.
 
-**Not yet covered:** `suppression`, `reply_triage`, `scheduler`, `outcomes`, and `approval_queue` still rely entirely on the original manual-verification convention. Not because it's wrong, but because it predates the shift to automated tests and hasn't been revisited — worth doing incrementally, the same way `discovery`'s coverage was built up one real bug at a time rather than as an upfront test-everything pass.
+**Not yet covered:** `scheduler`, `outcomes`, and `approval_queue` still rely entirely on the original manual-verification convention. Not because it's wrong, but because it predates the shift to automated tests and hasn't been revisited — worth doing incrementally, the same way `discovery`'s coverage was built up one real bug at a time rather than as an upfront test-everything pass.
 
 ## 9. Logging and monitoring
 
