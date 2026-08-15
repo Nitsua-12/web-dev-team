@@ -99,8 +99,16 @@ def main() -> None:
         f"{', '.join(sorted(indexable_slugs)) or '(none)'}"
     )
 
+    # --branch must be "main" regardless of the local git branch (which is
+    # "master") -- the Cloudflare Pages project's production branch is "main",
+    # and a deploy tagged with any other branch name lands as a non-production
+    # Preview deployment, invisible at the bare <project>.pages.dev domain.
     result = subprocess.run(
-        ["npx", "wrangler", "pages", "deploy", str(DEFAULT_OUTPUT_DIR), "--project-name", project_name],
+        [
+            "npx", "wrangler", "pages", "deploy", str(DEFAULT_OUTPUT_DIR),
+            "--project-name", project_name,
+            "--branch", "main",
+        ],
         shell=(os.name == "nt"),
     )
     if result.returncode != 0:
