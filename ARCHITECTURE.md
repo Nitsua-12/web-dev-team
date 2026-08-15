@@ -124,13 +124,13 @@ The original ask named LangGraph, CrewAI, OpenAI Agents SDK, MCP, Temporal, and 
 - `agents/website_demo`: 16 tests (`test_deploy.py`, `test_generate_demo.py`) — the demo-hosting/noindex pure functions: `build_root_robots_txt()`, `find_indexable_html_outside_allowlist()`, `read_indexable_slugs()`, the per-page robots meta tag token, and `write_sitemap()`.
 - `agents/outreach`: 8 tests (`test_generate_drafts.py`) — `demo_url_for()` and `demo_status_line()` (the demo-URL pure functions), plus a regression test that the demo status line actually appears in `build_user_prompt()`'s output. Doesn't cover the LLM-calling paths.
 - `agents/dossier`: 8 tests (`test_generate_dossier.py`) — same shape as `outreach`: `demo_url_for()`/`demo_status_line()` plus a `build_user_prompt()` regression test. Doesn't cover the LLM-calling/web-search paths.
-
 - `agents/suppression`: 23 tests (`test_db.py`) — phone/email normalization, the add/is_suppressed/list/remove lifecycle, the upsert-on-readd behavior, and the unnormalizable-value edge cases. No LLM involved anywhere in this agent.
 - `agents/reply_triage`: 22 tests across `test_db.py` (the replies-log CRUD) and `test_triage_cli.py` (`slugify()`, `lookup_lead()`'s business-name/phone matching, `take_action()`'s per-classification branching including the auto-suppress path, `update_dossier()`'s marker-insert/prepend/missing-file cases). Doesn't cover `classify_reply()` or `main()`, the only parts that call the real Anthropic API.
+- `agents/approval_queue`: 33 tests (`test_server.py`) — `slugify()`, `load_leads_by_slug()`, `is_suppressed()`, `already_sent()` (pre-existing), `build_queue()`/`get_lead_detail()`'s lead/draft/decision-combining logic, and a live-server suite that binds `Handler` to a real ephemeral port and drives every route (`/`, `/index.html`, `/app.js`, `/style.css`, `/api/queue`, `/api/lead/<slug>`, `POST /api/decide`, `POST /api/reset`, and the 404 fallback) with real HTTP requests via `http.client` — the one part of this project that had never been exercised at all before this, since every other agent here is a CLI, not an HTTP server.
 
 All using Python's built-in `unittest` — zero new dependency, matching the project's minimal-dependency pattern.
 
-**Not yet covered:** `scheduler`, `outcomes`, and `approval_queue` still rely entirely on the original manual-verification convention. Not because it's wrong, but because it predates the shift to automated tests and hasn't been revisited — worth doing incrementally, the same way `discovery`'s coverage was built up one real bug at a time rather than as an upfront test-everything pass.
+**Not yet covered:** `scheduler` and `outcomes` still rely entirely on the original manual-verification convention. Not because it's wrong, but because it predates the shift to automated tests and hasn't been revisited — worth doing incrementally, the same way `discovery`'s coverage was built up one real bug at a time rather than as an upfront test-everything pass.
 
 ## 9. Logging and monitoring
 
