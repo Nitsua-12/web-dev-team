@@ -127,10 +127,12 @@ The original ask named LangGraph, CrewAI, OpenAI Agents SDK, MCP, Temporal, and 
 - `agents/suppression`: 23 tests (`test_db.py`) — phone/email normalization, the add/is_suppressed/list/remove lifecycle, the upsert-on-readd behavior, and the unnormalizable-value edge cases. No LLM involved anywhere in this agent.
 - `agents/reply_triage`: 22 tests across `test_db.py` (the replies-log CRUD) and `test_triage_cli.py` (`slugify()`, `lookup_lead()`'s business-name/phone matching, `take_action()`'s per-classification branching including the auto-suppress path, `update_dossier()`'s marker-insert/prepend/missing-file cases). Doesn't cover `classify_reply()` or `main()`, the only parts that call the real Anthropic API.
 - `agents/approval_queue`: 33 tests (`test_server.py`) — `slugify()`, `load_leads_by_slug()`, `is_suppressed()`, `already_sent()` (pre-existing), `build_queue()`/`get_lead_detail()`'s lead/draft/decision-combining logic, and a live-server suite that binds `Handler` to a real ephemeral port and drives every route (`/`, `/index.html`, `/app.js`, `/style.css`, `/api/queue`, `/api/lead/<slug>`, `POST /api/decide`, `POST /api/reset`, and the 404 fallback) with real HTTP requests via `http.client` — the one part of this project that had never been exercised at all before this, since every other agent here is a CLI, not an HTTP server.
+- `agents/scheduler`: 22 tests across `test_db.py` (the sends log, including the upsert-on-remark behavior) and `test_scheduler_cli.py` (`slugify()`, `lookup_lead()`, and `compute_schedule()`'s full due-date logic: anchoring to the real initial-send date, skipping suppressed leads, skipping any lead with a reply logged, skipping leads with no `draft.json` or no initial send, stopping once every follow-up is sent, and sorting multiple leads by urgency). No LLM anywhere in this agent.
+- `agents/outcomes`: 18 tests across `test_db.py` (the outcomes lifecycle, including upsert-on-re-record and the `VALID_OUTCOMES` check), `test_stats.py` (`compute_funnel()` against real sends/replies/outcomes data — counting only initial sends, per-classification and per-outcome breakdowns, `avg_won_value` correctly excluding `NULL` closed values, and both sample-size-meaningful thresholds, plus the two degrade-safely cases: a source DB that doesn't exist yet and one that exists but never had its schema applied), and `test_outcomes_cli.py` (`slugify()`/`lookup_lead()`). No LLM anywhere in this agent either.
 
 All using Python's built-in `unittest` — zero new dependency, matching the project's minimal-dependency pattern.
 
-**Not yet covered:** `scheduler` and `outcomes` still rely entirely on the original manual-verification convention. Not because it's wrong, but because it predates the shift to automated tests and hasn't been revisited — worth doing incrementally, the same way `discovery`'s coverage was built up one real bug at a time rather than as an upfront test-everything pass.
+Every agent in this project now has automated test coverage.
 
 ## 9. Logging and monitoring
 
@@ -317,7 +319,7 @@ Each agent is self-contained (own `venv`, own `.env`, own README) rather than sh
 - A feedback loop from actual outreach outcomes (opened, replied, closed) back into the Dossier agent's likelihood-of-closing estimates, which today have no historical data to calibrate against
 - Dedupe leads across overlapping city search-radius boundaries beyond exact `place_id` match (documented as a known gap in Discovery's README since day one)
 - ~~Feed the website audit's `audit_signals` into Dossier's prompt~~ — **Resolved.** `generate_dossier.py`'s `format_audit_findings()` now turns a `qualified_outdated` lead's stored `audit_status`/`audit_signals` into plain-language findings (PageSpeed score, missing schema, no phone found, etc.) appended to the prompt's `Situation` line, verified against real and synthetic rows built from the actual schema — including the never-audited case (`audit_status` defaults to the string `'not_run'`, not `NULL`, which the check now excludes explicitly rather than falsy-checking).
-- Extend automated test coverage (§8) to the agents that still rely entirely on manual verification
+- ~~Extend automated test coverage (§8) to the agents that still rely entirely on manual verification~~ — **Resolved.** Every agent now has automated tests (§8).
 
 ## 19. Team roles: status and gaps
 
