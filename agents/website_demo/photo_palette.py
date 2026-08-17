@@ -23,43 +23,51 @@ MIN_VALUE = 0.15
 MAX_VALUE = 0.92
 
 
-def get_palette(place_id: str, api_key: str) -> dict | None:
+def get_palette(place_id: str, api_key: str, client: httpx.Client | None = None) -> dict | None:
     """Returns {"accent": "#rrggbb", "accent_dark": "#rrggbb", "accent_soft": "#rrggbbaa"}
     or None if no usable photo/color was found (caller should fall back to
     the template's default palette)."""
-    photo_name = _get_first_photo_name(place_id, api_key)
-    if not photo_name:
-        return None
+    owns_client = client is None
+    client = client or httpx.Client(timeout=10.0)
+    try:
+        photo_name = _get_first_photo_name(place_id, api_key, client)
+        if not photo_name:
+            return None
 
-    image_bytes = _fetch_photo_bytes(photo_name, api_key)
-    if not image_bytes:
-        return None
+        image_bytes = _fetch_photo_bytes(photo_name, api_key, client)
+        if not image_bytes:
+            return None
 
-    accent_rgb = _dominant_accent_color(image_bytes)
-    if not accent_rgb:
-        return None
+        accent_rgb = _dominant_accent_color(image_bytes)
+        if not accent_rgb:
+            return None
 
-    return _build_palette(accent_rgb)
+        return _build_palette(accent_rgb)
+    finally:
+        if owns_client:
+            client.close()
 
 
-def _get_first_photo_name(place_id: str, api_key: str) -> str | None:
+def _get_first_photo_name(place_id: str, api_key: str, client: httpx.Client) -> str | None:
     url = DETAILS_URL.format(place_id=place_id)
     headers = {"X-Goog-Api-Key": api_key, "X-Goog-FieldMask": "photos"}
     try:
-        response = httpx.get(url, headers=headers, timeout=10.0)
+        response = client.get(url, headers=headers, timeout=10.0)
         response.raise_for_status()
-    except httpx.HTTPError:
+        photos = response.json().get("photos", [])
+    except (httpx.HTTPError, ValueError):
+        # ValueError covers response.json() on a non-JSON body -- same
+        # "never crash the batch, just skip this lead's palette" contract
+        # as every other failure mode in this module.
         return None
-
-    photos = response.json().get("photos", [])
     return photos[0]["name"] if photos else None
 
 
-def _fetch_photo_bytes(photo_name: str, api_key: str) -> bytes | None:
+def _fetch_photo_bytes(photo_name: str, api_key: str, client: httpx.Client) -> bytes | None:
     url = MEDIA_URL.format(photo_name=photo_name)
     params = {"maxWidthPx": 200, "key": api_key}
     try:
-        response = httpx.get(url, params=params, timeout=10.0, follow_redirects=True)
+        response = client.get(url, params=params, timeout=10.0, follow_redirects=True)
         response.raise_for_status()
     except httpx.HTTPError:
         return None
@@ -67,10 +75,15 @@ def _fetch_photo_bytes(photo_name: str, api_key: str) -> bytes | None:
 
 
 def _dominant_accent_color(image_bytes: bytes) -> tuple[int, int, int] | None:
-    with Image.open(io.BytesIO(image_bytes)) as img:
-        img = img.convert("RGB")
-        img.thumbnail((100, 100))
-        colors = img.getcolors(maxcolors=10_000) or []
+    try:
+        with Image.open(io.BytesIO(image_bytes)) as img:
+            img = img.convert("RGB")
+            img.thumbnail((100, 100))
+            colors = img.getcolors(maxcolors=10_000) or []
+    except OSError:
+        # Not a decodable image -- same degrade-gracefully contract as
+        # every other failure mode in this module.
+        return None
 
     colors.sort(key=lambda c: c[0], reverse=True)
 

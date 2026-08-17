@@ -197,20 +197,29 @@ reason this project moved off using Rooster Ink's real design as a
 template -- reusing someone else's real content without permission, even
 for a sales pitch, isn't something to build a pipeline around.
 
-**Current status: not working, cause not yet identified.** Every lead
-currently falls back to the template's default palette. Testing directly
-against the Places API shows `200 OK` responses with the `photos` field
-silently absent -- even for a landmark with heavy photo coverage
-(Statue of Liberty), which rules out "this specific business has no
-photos" as the explanation. Field mask syntax matches Google's
-documented format (`photos` for Place Details, `places.photos` for Text
-Search). Most likely cause is a Photos-specific enablement/SKU gap on the
-Cloud project that isn't surfaced as an error -- worth checking API
-metrics in Cloud Console for the actual request outcome, or Google
-Cloud support, before spending more time debugging client-side. The
-pipeline degrades safely in the meantime: every demo still generates
-correctly with the template's default palette, nothing crashes or
-produces broken output.
+**Current status: working.** For months this returned `200 OK` with the
+`photos` field silently absent for every lead -- even a landmark with
+heavy photo coverage (Statue of Liberty), which ruled out "this specific
+business has no photos." Field mask syntax was always correct (`photos`
+for Place Details, `places.photos` for Text Search), so the working
+theory was a Photos-specific enablement/SKU gap on the Cloud project
+that wasn't surfaced as an error. Re-tested 2026-08-16 against 5 real
+pilot leads (including the one used above) and the `photos` field is now
+populated for all of them, with `get_palette()` returning a real
+derived color end-to-end -- no code changes were needed on the request
+side, confirming it was the suspected account-side gap and not a bug
+here. All 9 live demos have been regenerated and redeployed with real
+per-lead accent colors instead of the template default. `photo_palette.py`
+now also has full test coverage (`test_photo_palette.py`,
+`httpx.MockTransport`-based, no live calls) and two hardening fixes
+found while writing those tests: a malformed-JSON response and an
+undecodable photo both used to raise uncaught exceptions that would
+have crashed the whole `generate_demo.py --force` batch instead of just
+skipping that one lead's palette -- both now degrade to `None` like
+every other failure mode in this module, matching this project's
+established "never crash the batch" pattern (the same fix already
+applied to `psi_client.py` previously). If this regresses again, check
+Cloud Console API metrics for the Photos SKU first, not the code.
 
 ## Before this goes anywhere near a lead
 
