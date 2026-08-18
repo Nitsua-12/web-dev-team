@@ -26,3 +26,6 @@ logs/
 
 # Git worktrees for isolated feature work
 .worktrees/
+
+# Playwright MCP tool output (screenshots/snapshots, not project source)
+.playwright-mcp/

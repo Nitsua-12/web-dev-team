@@ -57,6 +57,24 @@ class PageTokensRobotsTests(unittest.TestCase):
         self.assertNotEqual(tokens["CANONICAL_TAG"], "")  # unaffected by the robots default
 
 
+class PageTokensFaviconTests(unittest.TestCase):
+    def test_favicon_href_is_absolute_and_slug_scoped(self):
+        tokens = page_tokens("index.html", "some-slug", None, set())
+        self.assertEqual(tokens["FAVICON_LINK"], '<link rel="icon" type="image/svg+xml" href="/some-slug/favicon.svg">')
+
+    def test_favicon_href_same_regardless_of_page_depth(self):
+        # Must resolve correctly from a page one level deeper than index.html
+        # too (e.g. styles/custom-tattoos.html) -- an absolute path does,
+        # a path relative to html_file wouldn't.
+        shallow = page_tokens("index.html", "some-slug", None, set())
+        deep = page_tokens("styles/custom-tattoos.html", "some-slug", None, set())
+        self.assertEqual(shallow["FAVICON_LINK"], deep["FAVICON_LINK"])
+
+    def test_favicon_href_present_with_site_base_url_too(self):
+        tokens = page_tokens("index.html", "some-slug", "https://example.pages.dev", set())
+        self.assertEqual(tokens["FAVICON_LINK"], '<link rel="icon" type="image/svg+xml" href="/some-slug/favicon.svg">')
+
+
 class WriteSitemapTests(unittest.TestCase):
     def test_writes_sitemap_but_not_robots_txt(self):
         with tempfile.TemporaryDirectory() as tmp:

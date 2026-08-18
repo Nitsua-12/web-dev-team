@@ -159,8 +159,14 @@ def page_tokens(html_file: str, slug: str, site_base_url: str | None, indexable_
     robots_content = "index, follow" if slug in indexable_slugs else "noindex"
     robots_tag = {"ROBOTS_META_TAG": f'<meta name="robots" content="{robots_content}">'}
 
+    # Absolute path (not relative to html_file, which sits at varying depths
+    # under the slug -- artists/index.html and styles/*.html are one level
+    # deeper than index.html/booking.html) so it resolves correctly from
+    # every page regardless of depth.
+    favicon_tag = {"FAVICON_LINK": f'<link rel="icon" type="image/svg+xml" href="/{slug}/favicon.svg">'}
+
     if not site_base_url:
-        return {"CANONICAL_TAG": "", "OG_URL_TAG": "", "JSONLD_URL_FIELD": "", **robots_tag}
+        return {"CANONICAL_TAG": "", "OG_URL_TAG": "", "JSONLD_URL_FIELD": "", **robots_tag, **favicon_tag}
 
     url = page_url(site_base_url, slug, html_file)
     return {
@@ -168,6 +174,7 @@ def page_tokens(html_file: str, slug: str, site_base_url: str | None, indexable_
         "OG_URL_TAG": f'<meta property="og:url" content="{url}">',
         "JSONLD_URL_FIELD": f',\n  "url": "{url}"',
         **robots_tag,
+        **favicon_tag,
     }
 
 
